@@ -1,6 +1,8 @@
+import base64
 import hashlib
 
 import streamlit as st
+
 from app.config import (AGENT_NAME, COMPANY_NAME, DEFAULT_LANGUAGE, MOCK_MODE,
                         VOICE_ENABLED)
 from app.conversation_manager import (ConversationState, build_greeting,
@@ -28,42 +30,54 @@ _CSS = """
     padding: 8px 12px;
     margin-bottom: 4px;
 }
-.dashboard-card {
-    background: #f8f9fa;
-    border-radius: 10px;
-    padding: 16px;
-    margin-bottom: 12px;
-    border-left: 4px solid #0066CC;
-}
-.metric-label {
-    font-size: 0.75rem;
-    color: #6c757d;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-.metric-value {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: #212529;
-}
-.sentiment-badge {
-    display: inline-block;
-    padding: 2px 10px;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    font-weight: 600;
-}
-.escalation-banner {
-    background: #fff3cd;
-    border-left: 4px solid #ffc107;
-    padding: 10px 14px;
-    border-radius: 6px;
+.listening-banner {
+    background: linear-gradient(90deg, #e3f2fd, #bbdefb);
+    border-left: 4px solid #1976d2;
+    border-radius: 8px;
+    padding: 12px 16px;
     margin: 8px 0;
+    font-weight: 600;
+    color: #0d47a1;
+    animation: pulse 1.5s infinite;
 }
-div[data-testid="stAudio"] { margin-top: 4px; }
+.speaking-banner {
+    background: linear-gradient(90deg, #e8f5e9, #c8e6c9);
+    border-left: 4px solid #388e3c;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 8px 0;
+    font-weight: 600;
+    color: #1b5e20;
+}
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+.conv-mode-active {
+    background: #1976d2;
+    color: white;
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 0.8rem;
+    display: inline-block;
+}
 </style>
 """
 st.markdown(_CSS, unsafe_allow_html=True)
+
+
+# ── Audio helpers ────────────────────────────────────────────────────────────
+
+
+def _autoplay_audio(audio_bytes: bytes):
+    """Embed audio in HTML so it autoplays after user interaction."""
+    b64 = base64.b64encode(audio_bytes).decode()
+    st.markdown(
+        f'<audio autoplay="true" style="width:100%;margin-top:6px">'
+        f'<source src="data:audio/mp3;base64,{b64}" type="audio/mp3">'
+        f"</audio>",
+        unsafe_allow_html=True,
+    )
 
 
 # ── Session state helpers ────────────────────────────────────────────────────
@@ -76,6 +90,8 @@ def _init():
         "audio_output": None,
         "last_audio_hash": "",
         "voice_on": VOICE_ENABLED,
+        "conv_mode": True,
+        "sarah_speaking": False,
         "pending_summary": False,
     }
     for k, v in defaults.items():
@@ -90,6 +106,7 @@ def _start_conversation(customer: dict, language: str):
     st.session_state.greeted = False
     st.session_state.audio_output = None
     st.session_state.last_audio_hash = ""
+    st.session_state.sarah_speaking = False
     st.session_state.pending_summary = False
 
 
@@ -108,7 +125,10 @@ def _process_input(text: str):
         state, response = process_message(state, text)
 
     if st.session_state.voice_on:
-        st.session_state.audio_output = text_to_speech(response)
+        audio = text_to_speech(response)
+        if audio:
+            st.session_state.audio_output = audio
+            st.session_state.sarah_speaking = True
 
     if state.escalated or state.turn_count % 5 == 0:
         generate_summary(state)
@@ -161,9 +181,10 @@ def _render_sidebar():
             st.rerun()
 
         st.divider()
+
         st.session_state.voice_on = st.toggle(
             "🔊 Stem output (ElevenLabs)",
-            value=VOICE_ENABLED,
+            value=st.session_state.get("voice_on", VOICE_ENABLED),
             disabled=not VOICE_ENABLED,
             help=(
                 "Vereist ELEVENLABS_API_KEY"
@@ -172,11 +193,33 @@ def _render_sidebar():
             ),
         )
 
+        st.session_state.conv_mode = st.toggle(
+            "🔄 Gespreksmodus",
+            value=st.session_state.get("conv_mode", True),
+            help=("Continu gesprek — na elk antwoord staat de microfoon klaar"),
+        )
+
+        if st.session_state.conv_mode:
+            lang = (
+                st.session_state.conv_state.language
+                if st.session_state.conv_state
+                else "nl"
+            )
+            if lang == "nl":
+                st.caption(
+                    "Spreek → Sarah antwoordt → spreek opnieuw. "
+                    "Geen knop nodig tussen beurten."
+                )
+            else:
+                st.caption(
+                    "Speak → Sarah replies → speak again. "
+                    "No button needed between turns."
+                )
+
         if MOCK_MODE:
             st.warning(
-                "**Mock modus actief.**\n\n"
-                "Stel `OPENAI_API_KEY` in het `.env` bestand "
-                "in voor echte AI-responses.",
+                "**Mock modus actief.**\n\nStel `OPENAI_API_KEY` in voor "
+                "echte AI-responses.",
                 icon="⚠️",
             )
 
@@ -219,10 +262,7 @@ def _render_dashboard():
         )
     with col2:
         emoji = sentiment_emoji(state.sentiment)
-        st.metric(
-            "Sentiment",
-            f"{emoji} {state.sentiment.capitalize()}",
-        )
+        st.metric("Sentiment", f"{emoji} {state.sentiment.capitalize()}")
         turns_label = "Gespreksbeurten" if lang == "nl" else "Turns"
         st.metric(turns_label, state.turn_count)
 
@@ -239,8 +279,7 @@ def _render_dashboard():
         )
 
     if state.troubleshooting_step > 0:
-        max_steps = 6
-        progress = min(state.troubleshooting_step / max_steps, 1.0)
+        progress = min(state.troubleshooting_step / 6, 1.0)
         label = (
             f"Stap {state.troubleshooting_step}"
             if lang == "nl"
@@ -325,9 +364,8 @@ def _render_dashboard():
                 "💾 Opslaan" if lang == "nl" else "💾 Save",
                 use_container_width=True,
             ):
-                path = save_conversation(state)
+                save_conversation(state)
                 st.success("✅ Opgeslagen")
-                st.caption(path)
 
 
 # ── Chat area ────────────────────────────────────────────────────────────────
@@ -339,16 +377,22 @@ def _render_chat():
         return
 
     lang = state.language
+    conv_mode = st.session_state.conv_mode
 
+    # Send greeting on first load
     if not st.session_state.greeted:
         greeting = build_greeting(state)
         state.messages.append({"role": "assistant", "content": greeting})
         st.session_state.greeted = True
         st.session_state.conv_state = state
         if st.session_state.voice_on:
-            st.session_state.audio_output = text_to_speech(greeting)
+            audio = text_to_speech(greeting)
+            if audio:
+                st.session_state.audio_output = audio
+                st.session_state.sarah_speaking = True
 
-    chat_container = st.container(height=420)
+    # Conversation history
+    chat_container = st.container(height=400)
     with chat_container:
         for msg in state.messages:
             role = msg["role"]
@@ -356,50 +400,68 @@ def _render_chat():
             with st.chat_message(role, avatar=avatar):
                 st.markdown(msg["content"])
 
+    # Voice output — base64 autoplay (works after any user gesture)
     if st.session_state.audio_output:
-        st.audio(
-            st.session_state.audio_output,
-            format="audio/mp3",
-            autoplay=True,
-        )
+        if conv_mode:
+            st.markdown(
+                '<div class="speaking-banner">'
+                + ("🔊 Sarah spreekt..." if lang == "nl" else "🔊 Sarah is speaking...")
+                + "</div>",
+                unsafe_allow_html=True,
+            )
+        _autoplay_audio(st.session_state.audio_output)
         st.session_state.audio_output = None
+        st.session_state.sarah_speaking = False
 
     st.divider()
 
-    audio_col, _ = st.columns([2, 1])
-    with audio_col:
+    # Conversation mode banner
+    if conv_mode and state.turn_count > 0:
+        st.markdown(
+            '<div class="listening-banner">'
+            + (
+                "🎤 Uw beurt — druk op de microfoon en spreek"
+                if lang == "nl"
+                else "🎤 Your turn — click the mic and speak"
+            )
+            + "</div>",
+            unsafe_allow_html=True,
+        )
+
+    # Microphone input
+    try:
         audio_label = (
             "🎤 Spreek uw vraag in" if lang == "nl" else "🎤 Record your message"
         )
-        try:
-            audio_input = st.audio_input(audio_label)
-            if audio_input is not None:
-                raw = audio_input.read()
-                h = hashlib.md5(raw).hexdigest()
-                if h != st.session_state.last_audio_hash:
-                    st.session_state.last_audio_hash = h
+        audio_input = st.audio_input(audio_label)
+        if audio_input is not None:
+            raw = audio_input.read()
+            h = hashlib.md5(raw).hexdigest()
+            if h != st.session_state.last_audio_hash:
+                st.session_state.last_audio_hash = h
+                with st.spinner("Transcriberen…" if lang == "nl" else "Transcribing…"):
+                    text = speech_to_text(raw, lang)
+                if text and not text.startswith("["):
+                    st.caption(f"🎙️ {'Herkend' if lang == 'nl' else 'Heard'}: *{text}*")
                     with st.spinner(
-                        "Transcriberen…" if lang == "nl" else "Transcribing…"
+                        "Sarah denkt na…" if lang == "nl" else "Sarah is thinking…"
                     ):
-                        text = speech_to_text(raw, lang)
-                    if text and not text.startswith("["):
-                        st.caption(
-                            f"🎙️ {'Herkend' if lang == 'nl' else 'Heard'}: " f"*{text}*"
-                        )
                         _process_input(text)
-                        st.rerun()
-                    else:
-                        st.warning(text)
-        except AttributeError:
-            st.caption(
-                "Upgrade Streamlit (≥1.38) voor microfooninvoer."
-                if lang == "nl"
-                else "Upgrade Streamlit (≥1.38) for microphone input."
-            )
+                    st.rerun()
+                else:
+                    st.warning(text)
+    except AttributeError:
+        st.caption(
+            "Upgrade Streamlit (≥1.38) voor microfooninvoer."
+            if lang == "nl"
+            else "Upgrade Streamlit (≥1.38) for microphone input."
+        )
 
-    placeholder = "Type uw bericht hier…" if lang == "nl" else "Type your message…"
+    # Text input (always available as fallback)
+    placeholder = "Of typ uw bericht hier…" if lang == "nl" else "Or type your message…"
     if prompt := st.chat_input(placeholder):
-        _process_input(prompt)
+        with st.spinner("Sarah denkt na…" if lang == "nl" else "Sarah is thinking…"):
+            _process_input(prompt)
         st.rerun()
 
 
@@ -409,22 +471,20 @@ def _render_chat():
 def main():
     _init()
 
+    state = st.session_state.conv_state
+    lang = state.language if state else DEFAULT_LANGUAGE
+
     st.warning(
         "⚠️ **Demo prototype** — Dit is geen echte TelecomNL klantenservice. "
         "Uitsluitend bedoeld voor demonstratiedoeleinden."
-        if (
-            st.session_state.conv_state is None
-            or st.session_state.conv_state.language == "nl"
-        )
-        else (
-            "⚠️ **Demo prototype** — This is not a real TelecomNL service. "
-            "For demonstration purposes only."
-        ),
+        if lang == "nl"
+        else "⚠️ **Demo prototype** — This is not a real TelecomNL service. "
+        "For demonstration purposes only.",
         icon="⚠️",
     )
 
     st.title(f"📡 {COMPANY_NAME} — AI Klantenservice")
-    st.caption(f"Powered by GPT-4o + ElevenLabs • Agent: {AGENT_NAME}")
+    st.caption(f"Powered by GPT-4o-mini + ElevenLabs • Agent: {AGENT_NAME}")
 
     if st.session_state.conv_state is None:
         customers = load_customers()
