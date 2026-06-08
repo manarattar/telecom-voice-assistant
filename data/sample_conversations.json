@@ -1,0 +1,186 @@
+[
+  {
+    "session_id": "demo-001",
+    "customer": {
+      "name": "Jan de Vries",
+      "account_number": "TN-8842-1001",
+      "plan_name": "Thuis 500"
+    },
+    "language": "nl",
+    "intent": "wifi_slow",
+    "confidence": 0.91,
+    "sentiment": "frustrated",
+    "turn_count": 5,
+    "resolved": true,
+    "escalated": false,
+    "key_issue": "WiFi is traag op alle apparaten, probleem al 2 dagen",
+    "messages": [
+      {
+        "role": "assistant",
+        "content": "Goedendag, Jan! U spreekt met Sarah van TelecomNL. Hoe kan ik u vandaag helpen?"
+      },
+      {
+        "role": "user",
+        "content": "Mijn wifi is al 2 dagen erg traag. Ik kan nauwelijks een pagina laden."
+      },
+      {
+        "role": "assistant",
+        "content": "Dat klinkt erg vervelend, Jan. Ik ga u zo goed mogelijk helpen. Speelt het probleem op alle apparaten in huis, of alleen op één specifiek apparaat?"
+      },
+      {
+        "role": "user",
+        "content": "Op alle apparaten. Mijn laptop, telefoon en de TV zijn allemaal traag."
+      },
+      {
+        "role": "assistant",
+        "content": "Begrepen. Kunt u mij vertellen: heeft u de modem al opnieuw opgestart? Dat betekent de stekker eruit halen, 30 seconden wachten en dan weer insteken."
+      },
+      {
+        "role": "user",
+        "content": "Nee, dat heb ik nog niet geprobeerd."
+      },
+      {
+        "role": "assistant",
+        "content": "Dat is een goede eerste stap. Kunt u dat nu doen? De modem heeft daarna circa 2 minuten nodig om volledig op te starten. Ik wacht op uw terugkoppeling."
+      },
+      {
+        "role": "user",
+        "content": "Oké ik heb het gedaan en gewacht. Het is nu veel sneller! Bedankt!"
+      },
+      {
+        "role": "assistant",
+        "content": "Geweldig om te horen, Jan! Een modem-herstart lost inderdaad veel verbindingsproblemen op. Als het probleem terugkomt, kunt u altijd contact met ons opnemen. Nog een fijne dag gewenst!"
+      }
+    ],
+    "summary": {
+      "klant_probleem": "Trage WiFi op alle apparaten gedurende 2 dagen.",
+      "ondernomen_stappen": [
+        "Vastgesteld dat het probleem op alle apparaten speelt",
+        "Modem herstart uitgevoerd (stekker eruit, 30 sec wachten)",
+        "Verbinding hersteld na herstart"
+      ],
+      "waarschijnlijke_oorzaak": "Modem-geheugen vol of tijdelijke verbindingsstoring",
+      "aanbevolen_actie": "Geen verdere actie nodig. Bij herhaling: technicus plannen.",
+      "opgelost": true,
+      "escalatie_nodig": false,
+      "urgentie": "Laag",
+      "gespreksduur": "5 beurten",
+      "klanttevredenheid": "Positief"
+    }
+  },
+  {
+    "session_id": "demo-002",
+    "customer": {
+      "name": "Pieter van den Berg",
+      "account_number": "TN-6620-3003",
+      "plan_name": "Thuis Compleet"
+    },
+    "language": "nl",
+    "intent": "billing",
+    "confidence": 0.88,
+    "sentiment": "angry",
+    "turn_count": 4,
+    "resolved": false,
+    "escalated": true,
+    "key_issue": "Onverwachte extra kosten op factuur van €54,95",
+    "messages": [
+      {
+        "role": "assistant",
+        "content": "Goedendag, Pieter! U spreekt met Sarah van TelecomNL. Hoe kan ik u helpen?"
+      },
+      {
+        "role": "user",
+        "content": "Ik ben heel boos! Jullie hebben zomaar €54,95 van mijn rekening afgeschreven terwijl ik dat helemaal niet verwachtte!"
+      },
+      {
+        "role": "assistant",
+        "content": "Ik begrijp dat dit erg vervelend is, Pieter. Ik ga dit direct voor u uitzoeken. Heeft u de factuurspecificatie al bekeken via Mijn TelecomNL?"
+      },
+      {
+        "role": "user",
+        "content": "Nee, want ik kom er niet in! Het wachtwoord werkt niet meer. Dit is echt belachelijk, ik word al maanden slecht geholpen!"
+      },
+      {
+        "role": "assistant",
+        "content": "Ik begrijp uw frustratie volledig, Pieter. Gezien de combinatie van de factuurvraag en de toegangsproblemen verbind ik u nu door met een van onze specialisten. Zij kunnen direct in uw account kijken en dit oplossen. Uw klantnummer is TN-6620-3003. Één moment."
+      }
+    ],
+    "summary": {
+      "klant_probleem": "Onverwachte factuur van €54,95 en geen toegang tot Mijn TelecomNL.",
+      "ondernomen_stappen": [
+        "Klant geïdentificeerd (Pieter van den Berg, TN-6620-3003)",
+        "Factuurvraag genoteerd",
+        "Escalatie uitgevoerd vanwege combinatie problemen en hoge frustratie"
+      ],
+      "waarschijnlijke_oorzaak": "Mogelijk openstaande factuur van vorige maand + accounttoegang geblokkeerd",
+      "aanbevolen_actie": "Factuur toelichten, wachtwoord resetten, creditering overwegen",
+      "opgelost": false,
+      "escalatie_nodig": true,
+      "urgentie": "Hoog",
+      "gespreksduur": "4 beurten",
+      "klanttevredenheid": "Negatief",
+      "handoff_note": "Urgentie: HOOG\nProbleem: Onverwachte afschrijving €54,95 + geen toegang MijnTelecomNL\nStappen: Klant geïdentificeerd, escalatie na frustratie niveau 5\nActie: Controleer openstaand saldo, reset wachtwoord, bespreek creditering"
+    }
+  },
+  {
+    "session_id": "demo-003",
+    "customer": {
+      "name": "Fatima El Amrani",
+      "account_number": "TN-7731-2002",
+      "plan_name": "Mobiel Onbeperkt"
+    },
+    "language": "en",
+    "intent": "mobile_data",
+    "confidence": 0.85,
+    "sentiment": "neutral",
+    "turn_count": 4,
+    "resolved": true,
+    "escalated": false,
+    "key_issue": "Mobile data not working after switching to a new phone",
+    "messages": [
+      {
+        "role": "assistant",
+        "content": "Good day, Fatima! You're speaking with Sarah from TelecomNL. How can I help you today?"
+      },
+      {
+        "role": "user",
+        "content": "Hi, my mobile data isn't working since I got my new phone yesterday."
+      },
+      {
+        "role": "assistant",
+        "content": "I can help you with that. First, could you check whether flight mode is turned off on your new phone?"
+      },
+      {
+        "role": "user",
+        "content": "Yes, flight mode is off. Data is enabled too."
+      },
+      {
+        "role": "assistant",
+        "content": "Good. The next step is to check your APN settings. Go to Settings > Mobile Network > APN and make sure the APN is set to: internet.telecoomnl.nl — is that what you see there?"
+      },
+      {
+        "role": "user",
+        "content": "No, it was different. I changed it and now data works! Thank you!"
+      },
+      {
+        "role": "assistant",
+        "content": "Great news! APN settings sometimes reset when you switch phones. Everything should work normally now. Is there anything else I can help you with today?"
+      }
+    ],
+    "summary": {
+      "customer_issue": "Mobile data not working on new phone due to incorrect APN settings.",
+      "steps_taken": [
+        "Confirmed flight mode was off",
+        "Checked mobile data toggle (enabled)",
+        "Corrected APN settings to internet.telecoomnl.nl"
+      ],
+      "likely_cause": "APN settings not transferred when switching to new device",
+      "recommended_action": "No further action needed. Issue resolved.",
+      "resolved": true,
+      "escalation_needed": false,
+      "urgency": "Low",
+      "conversation_length": "4 turns",
+      "customer_satisfaction": "Positive"
+    }
+  }
+]

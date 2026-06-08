@@ -1,0 +1,256 @@
+{
+  "company": {
+    "name": "TelecomNL",
+    "support_phone": "0800-1234",
+    "support_hours": "Ma-Za 08:00-22:00, Zo 10:00-18:00",
+    "emergency_outage": "0800-5678",
+    "website": "www.telecoomnl.nl"
+  },
+  "categories": {
+    "wifi_slow": {
+      "name": { "nl": "Trage WiFi", "en": "Slow WiFi" },
+      "keywords_nl": ["traag", "langzaam", "wifi", "draadloos", "snelheid", "buffert", "laadt"],
+      "keywords_en": ["slow", "wifi", "speed", "buffering", "loading", "fast", "wireless"],
+      "troubleshooting_checklist": [
+        "Check of het probleem op alle apparaten speelt of slechts één",
+        "Controleer de afstand tot de router",
+        "Herstart de modem/router (30 seconden uitschakelen)",
+        "Controleer of er meerdere apparaten tegelijk actief zijn",
+        "Voer een snelheidstest uit op fast.com of speedtest.net",
+        "Controleer of de router op een vrij kanaal staat (gebruik WiFi Analyzer app)",
+        "Zet het 5GHz-netwerk in plaats van 2.4GHz als je dicht bij de router bent"
+      ],
+      "common_solutions": [
+        "Router herstart lost 70% van de traag-WiFi klachten op",
+        "Kanaalstoring: stel de router in op een ander WiFi-kanaal (6, 11 of 36)",
+        "Gebruik een WiFi-versterker (repeater) bij grote afstand",
+        "Controleer firmwareupdate voor de router",
+        "Overweeg upgrade naar glasvezel als het abonnement te laag is"
+      ],
+      "escalation_criteria": "Na 4 troubleshooting stappen zonder resultaat of na modem-vervanging-aanvraag"
+    },
+    "wifi_down": {
+      "name": { "nl": "WiFi werkt niet", "en": "WiFi not working" },
+      "keywords_nl": ["geen wifi", "wifi weg", "niet verbinden", "verbinding verbroken", "wifi kapot"],
+      "keywords_en": ["no wifi", "wifi down", "can't connect", "disconnected", "wifi broken", "not connecting"],
+      "troubleshooting_checklist": [
+        "Controleer of de router aan staat en de lampjes normaal zijn",
+        "Herstart de router (stekker eruit, 30 sec wachten, terugzetten)",
+        "Controleer of het WiFi-signaal zichtbaar is op andere apparaten",
+        "Vergeet het netwerk op het apparaat en verbind opnieuw",
+        "Controleer of het wachtwoord correct is",
+        "Reset WiFi-instellingen op het apparaat"
+      ],
+      "common_solutions": [
+        "Modem herstart (meest effectief)",
+        "Vergeet netwerk en opnieuw koppelen",
+        "Controleer storingspagina TelecomNL voor uw regio",
+        "Technicus sturen als hardware-probleem vermoed wordt"
+      ],
+      "escalation_criteria": "Modem-probleem, hardwarestoring of storing in regio"
+    },
+    "internet_down": {
+      "name": { "nl": "Geen internet", "en": "No internet" },
+      "keywords_nl": ["geen internet", "internet weg", "offline", "internet werkt niet", "geen verbinding"],
+      "keywords_en": ["no internet", "internet down", "offline", "not working", "no connection"],
+      "troubleshooting_checklist": [
+        "Controleer alle kabels (coax, ethenet, voedingskabel)",
+        "Controleer de lampjes op de modem: power, dsl/internet, wifi",
+        "Herstart de modem en wacht 2 minuten",
+        "Probeer een bekabelde verbinding (ethernet) in plaats van WiFi",
+        "Controleer of er een storing gemeld is in uw regio via onze website",
+        "Controleer of het abonnement actief is en of er geen openstaande facturen zijn"
+      ],
+      "common_solutions": [
+        "Modem-herstart met 2 minuten wachttijd",
+        "Kabelcontrole: losse coax-kabel is veelvoorkomende oorzaak",
+        "Regionale storing: ETA opvragen bij klantenservice",
+        "Modem-vervanging aanvragen als apparaat defect is",
+        "Abonnementscontrole bij betalingsachterstand"
+      ],
+      "escalation_criteria": "Geen verbinding na herstart en kabelcontrole, of bevestigde regionale storing"
+    },
+    "internet_unstable": {
+      "name": { "nl": "Onstabiel internet", "en": "Unstable internet" },
+      "keywords_nl": ["wegvalt", "onstabiel", "valt weg", "disconnecteert", "verbinding verbreekt", "hapering", "onderbreking"],
+      "keywords_en": ["unstable", "dropping", "disconnecting", "intermittent", "cutting out", "interruption"],
+      "troubleshooting_checklist": [
+        "Noteer wanneer de verbinding wegvalt (tijdstip, duur, frequentie)",
+        "Controleer alle kabelverbindingen op de modem",
+        "Test via ethernet om WiFi als oorzaak uit te sluiten",
+        "Controleer op interferentie (magnetrons, babyfoons, buren)",
+        "Bekijk modem-logs via 192.168.1.1 of 192.168.0.1",
+        "Voer een ping-test uit naar 8.8.8.8 en noteer pakketverlies"
+      ],
+      "common_solutions": [
+        "Kabelcontrole (beschadigde coax veroorzaakt onstabiliteit)",
+        "Wijziging WiFi-kanaal",
+        "Modemvervanging bij ouder dan 5 jaar",
+        "Lijnkwaliteitstest door technicien aan huis"
+      ],
+      "escalation_criteria": "Aanhoudende instabiliteit na kabelcontrole en herstart"
+    },
+    "mobile_data": {
+      "name": { "nl": "Mobiele data werkt niet", "en": "Mobile data not working" },
+      "keywords_nl": ["mobiel", "data", "4g", "5g", "mobiel internet", "sim", "roaming", "geen signaal"],
+      "keywords_en": ["mobile data", "4g", "5g", "cellular", "no signal", "roaming", "data not working"],
+      "troubleshooting_checklist": [
+        "Controleer of vliegtuigmodus uit staat",
+        "Herstart het toestel",
+        "Controleer of mobiele data ingeschakeld is in instellingen",
+        "Controleer APN-instellingen (TelecomNL APN: internet.telecoomnl.nl)",
+        "Verwijder en herplaats de SIM-kaart",
+        "Controleer het databundel-verbruik (niet overschreden?)",
+        "Test de SIM in een ander toestel"
+      ],
+      "common_solutions": [
+        "Vliegtuigmodus aan/uit zetten (netwerk opnieuw registreren)",
+        "APN-instellingen resetten naar standaard",
+        "Databundel opgebruikt: bijkopen of wachten op verlenging",
+        "SIM-kaart defect: gratis vervangings-SIM aanvragen",
+        "Mast storing in uw gebied"
+      ],
+      "escalation_criteria": "Geen signaal na SIM-test in ander toestel, of mast-storing"
+    },
+    "sim_activation": {
+      "name": { "nl": "SIM-activering", "en": "SIM activation" },
+      "keywords_nl": ["sim activeren", "nieuwe sim", "sim werkt niet", "activatie", "nieuwe telefoon", "simkaart"],
+      "keywords_en": ["sim activation", "new sim", "sim not working", "activate", "new phone", "simcard"],
+      "troubleshooting_checklist": [
+        "Controleer of de SIM correct geplaatst is (juiste sleuf, richting)",
+        "Wacht tot 24 uur na activatie voor volledig netwerk",
+        "Herstart het toestel na plaatsing van de SIM",
+        "Controleer activeringsstatus via Mijn TelecomNL",
+        "Zorg dat het toestel niet SIM-gelocked is voor een ander netwerk"
+      ],
+      "common_solutions": [
+        "Activatie duurt maximaal 4 uur na aanvraag",
+        "SIM-lock controle: gratis unlock aanvragen",
+        "Defecte SIM: gratis vervanging via servicecentrum",
+        "Portabiliteit (nummerbehoud) kan 1-2 werkdagen duren"
+      ],
+      "escalation_criteria": "Niet geactiveerd na 24 uur, of SIM-lock probleem"
+    },
+    "billing": {
+      "name": { "nl": "Factuurvraag", "en": "Billing question" },
+      "keywords_nl": ["factuur", "rekening", "betaling", "kosten", "prijs", "te duur", "afschrijving", "incasso", "betalen"],
+      "keywords_en": ["bill", "invoice", "payment", "cost", "price", "charge", "expensive", "billing"],
+      "troubleshooting_checklist": [
+        "Bekijk de factuurspecificatie in Mijn TelecomNL",
+        "Controleer of er extra diensten of gebruik in rekening gebracht zijn",
+        "Controleer de datum van de factuur en betaalperiode",
+        "Bekijk eventuele roamingkosten of premium-nummers",
+        "Controleer of er een automatische incasso actief is"
+      ],
+      "common_solutions": [
+        "Factuurdetails inzien via Mijn TelecomNL > Facturen",
+        "Bezwaar maken op onbekende kosten: creditering mogelijk",
+        "Betalingsregeling treffen bij financiële moeilijkheden",
+        "Automatische incasso instellen om te late betaling te voorkomen",
+        "Papieren factuur omzetten naar digitale factuur (bespaart €1,50/mnd)"
+      ],
+      "escalation_criteria": "Dispuut over factuur, betalingsachterstand, of creditering nodig"
+    },
+    "subscription_change": {
+      "name": { "nl": "Abonnementswijziging", "en": "Subscription change" },
+      "keywords_nl": ["abonnement", "pakket", "upgrade", "downgrade", "wijzigen", "aanpassen", "overstappen"],
+      "keywords_en": ["subscription", "plan", "upgrade", "downgrade", "change", "switch", "package"],
+      "troubleshooting_checklist": [
+        "Bekijk huidig abonnement en gebruik via Mijn TelecomNL",
+        "Bepaal welk pakket beter past (snelheid, bundel, TV)",
+        "Controleer of er een contractperiode geldt",
+        "Vergelijk beschikbare pakketten op de website"
+      ],
+      "common_solutions": [
+        "Upgrade direct mogelijk via Mijn TelecomNL of klantenservice",
+        "Downgrade mogelijk na afloop contractperiode",
+        "Tussentijdse opzegging: uitzoekvergoeding van toepassing",
+        "Combinatievoordeel: internet + TV + mobiel = korting",
+        "Studentenkorting beschikbaar met geldige studentenkaart"
+      ],
+      "escalation_criteria": "Contractdispuut of bijzondere omstandigheid"
+    },
+    "contract": {
+      "name": { "nl": "Contractvraag", "en": "Contract question" },
+      "keywords_nl": ["contract", "opzeggen", "looptijd", "einde contract", "overstap", "verlenging", "opzegtermijn"],
+      "keywords_en": ["contract", "cancel", "termination", "end contract", "switch provider", "renewal", "notice period"],
+      "troubleshooting_checklist": [
+        "Bekijk contractdetails via Mijn TelecomNL > Mijn Abonnement",
+        "Controleer einddatum en opzegtermijn (doorgaans 1 maand)",
+        "Bereken eventuele uitzoekvergoeding",
+        "Vergelijk met aanbod andere providers"
+      ],
+      "common_solutions": [
+        "Opzegging minimaal 1 maand voor einddatum",
+        "Loyaliteitskorting bij verlenging: tot 20% korting",
+        "Retentie-aanbod beschikbaar voor langdurige klanten",
+        "Bij overlijden of verhuizing buiten dekkingsgebied: boetevrij opzeggen"
+      ],
+      "escalation_criteria": "Contractdispuut, mogelijke opzegging, retentie-gesprek nodig"
+    },
+    "outage": {
+      "name": { "nl": "Storing in mijn gebied", "en": "Service outage" },
+      "keywords_nl": ["storing", "gebied", "buurt", "buren", "regio", "overal", "massastoring"],
+      "keywords_en": ["outage", "area", "region", "neighbors", "widespread", "service down", "mass outage"],
+      "troubleshooting_checklist": [
+        "Controleer storingspagina: www.telecoomnl.nl/storing",
+        "Verificeer postcode op storingspagina",
+        "Controleer sociale media (@TelecomNL) voor updates",
+        "Noteer starttijd van de storing"
+      ],
+      "common_solutions": [
+        "Actuele storingsinformatie via website en app",
+        "Push-notificatie inschakelen voor storing-updates",
+        "Verwachte hersteltijd opvragen",
+        "Compensatie aanvragen bij langdurige storing (>4 uur): automatisch gecrediteerd"
+      ],
+      "escalation_criteria": "Altijd: storingsinformatie en ETA doorgeven"
+    },
+    "unknown": {
+      "name": { "nl": "Algemene vraag", "en": "General inquiry" },
+      "keywords_nl": [],
+      "keywords_en": [],
+      "troubleshooting_checklist": [],
+      "common_solutions": ["Doorverbinden naar juiste afdeling", "Terugbelverzoek inplannen"],
+      "escalation_criteria": "Altijd na 2 onbeantwoorde vragen"
+    }
+  },
+  "plans": {
+    "thuis_basis": {
+      "name": "Thuis Basis",
+      "speed": "100 Mbps download / 10 Mbps upload",
+      "price": "€29,95/mnd",
+      "includes": ["Internet", "Basistelefonie"]
+    },
+    "thuis_500": {
+      "name": "Thuis 500",
+      "speed": "500 Mbps download / 50 Mbps upload",
+      "price": "€39,95/mnd",
+      "includes": ["Internet", "Telefonie", "1 TV-pakket"]
+    },
+    "thuis_compleet": {
+      "name": "Thuis Compleet",
+      "speed": "1 Gbps download / 100 Mbps upload",
+      "price": "€54,95/mnd",
+      "includes": ["Internet", "Telefonie", "TV Compleet", "TelecomNL TV app"]
+    },
+    "mobiel_s": {
+      "name": "Mobiel S",
+      "data": "5 GB",
+      "minutes": "Onbeperkt bellen",
+      "price": "€15,00/mnd"
+    },
+    "mobiel_m": {
+      "name": "Mobiel M",
+      "data": "20 GB",
+      "minutes": "Onbeperkt bellen",
+      "price": "€22,50/mnd"
+    },
+    "mobiel_onbeperkt": {
+      "name": "Mobiel Onbeperkt",
+      "data": "Onbeperkt",
+      "minutes": "Onbeperkt bellen",
+      "price": "€35,00/mnd"
+    }
+  }
+}
