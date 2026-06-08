@@ -69,15 +69,6 @@ const API = {
     return finalState;
   },
 
-  async speak(text) {
-    const r = await fetch('/api/speak', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
-    });
-    if (!r.ok) return null;
-    return r.blob();
-  },
 };
 
 // ── App state ────────────────────────────────────────────────────────────────
@@ -272,21 +263,60 @@ function updateDashboard(newState) {
 
 let currentAudio = null;
 
+function showToast(msg, color = '#ef4444') {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  Object.assign(t.style, {
+    position: 'fixed', bottom: '90px', left: '50%', transform: 'translateX(-50%)',
+    background: color, color: '#fff', padding: '8px 16px', borderRadius: '8px',
+    fontSize: '13px', zIndex: 999, maxWidth: '90vw', textAlign: 'center',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+  });
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 5000);
+}
+
 async function playTTS(text) {
-  if (!state.voiceEnabled) return;
+  if (!state.voiceEnabled) {
+    showToast('🔇 Stem uitgeschakeld (geen ElevenLabs API-sleutel)', '#374151');
+    return;
+  }
 
   setMode('playing');
 
-  const blob = await API.speak(text).catch(() => null);
-  if (!blob) { setMode('idle'); return; }
+  let blob;
+  try {
+    const r = await fetch('/api/speak', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      showToast('🔇 Stem mislukt: ' + (err.error || r.status));
+      setMode('idle');
+      return;
+    }
+    blob = await r.blob();
+  } catch (err) {
+    showToast('🔇 Netwerk fout bij stem: ' + err.message);
+    setMode('idle');
+    return;
+  }
 
   const url = URL.createObjectURL(blob);
   currentAudio = new Audio(url);
 
   await new Promise((resolve) => {
     currentAudio.onended  = resolve;
-    currentAudio.onerror  = resolve;
-    currentAudio.play().catch(resolve);
+    currentAudio.onerror  = (e) => {
+      showToast('🔇 Audio afspeelfout: ' + e.message);
+      resolve();
+    };
+    currentAudio.play().catch((e) => {
+      showToast('🔇 Autoplay geblokkeerd — klik ergens op de pagina en probeer opnieuw');
+      resolve();
+    });
   });
 
   URL.revokeObjectURL(url);

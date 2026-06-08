@@ -177,3 +177,24 @@ def speak(req: SpeakRequest):
     if not audio_bytes:
         return JSONResponse({"error": "TTS niet beschikbaar"}, status_code=503)
     return Response(audio_bytes, media_type="audio/mpeg")
+
+
+@app.get("/api/voice-check")
+def voice_check():
+    """Diagnostic endpoint — tests TTS with a short phrase."""
+    import traceback
+
+    result = {"voice_enabled": VOICE_ENABLED, "ok": False, "error": None, "bytes": 0}
+    if not VOICE_ENABLED:
+        result["error"] = "ELEVENLABS_API_KEY not set"
+        return result
+    try:
+        audio = text_to_speech("Hallo, dit is een test.")
+        if audio:
+            result["ok"] = True
+            result["bytes"] = len(audio)
+        else:
+            result["error"] = "text_to_speech returned None"
+    except Exception:
+        result["error"] = traceback.format_exc()
+    return result
