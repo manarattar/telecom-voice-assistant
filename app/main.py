@@ -2,6 +2,7 @@ import base64
 import hashlib
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 from app.config import (AGENT_NAME, COMPANY_NAME, DEFAULT_LANGUAGE, MOCK_MODE,
                         VOICE_ENABLED)
@@ -69,15 +70,37 @@ st.markdown(_CSS, unsafe_allow_html=True)
 # ── Audio helpers ────────────────────────────────────────────────────────────
 
 
-def _autoplay_audio(audio_bytes: bytes):
-    """Embed audio in HTML so it autoplays after user interaction."""
+def _play_response(audio_bytes: bytes, auto_listen: bool = False):
+    """Play Sarah's response and optionally auto-start the mic when done."""
     b64 = base64.b64encode(audio_bytes).decode()
-    st.markdown(
-        f'<audio autoplay="true" style="width:100%;margin-top:6px">'
-        f'<source src="data:audio/mp3;base64,{b64}" type="audio/mp3">'
-        f"</audio>",
-        unsafe_allow_html=True,
+    auto_js = (
+        """
+        audio.addEventListener('ended', function() {
+            setTimeout(function() {
+                var btn = window.parent.document.querySelector(
+                    '[data-testid="stAudioInput"] button'
+                );
+                if (btn) { btn.click(); }
+            }, 600);
+        });
+        """
+        if auto_listen
+        else ""
     )
+    html = f"""
+        <audio id="sa" autoplay controls style="width:100%;border-radius:8px">
+            <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
+        </audio>
+        <script>
+        (function() {{
+            var audio = document.getElementById('sa');
+            if (!audio) return;
+            audio.play().catch(function(){{}});
+            {auto_js}
+        }})();
+        </script>
+    """
+    components.html(html, height=60)
 
 
 # ── Session state helpers ────────────────────────────────────────────────────
@@ -400,16 +423,22 @@ def _render_chat():
             with st.chat_message(role, avatar=avatar):
                 st.markdown(msg["content"])
 
-    # Voice output — base64 autoplay (works after any user gesture)
+    # Voice output — plays audio and auto-starts mic when done (conv mode)
     if st.session_state.audio_output:
-        if conv_mode:
-            st.markdown(
-                '<div class="speaking-banner">'
-                + ("🔊 Sarah spreekt..." if lang == "nl" else "🔊 Sarah is speaking...")
-                + "</div>",
-                unsafe_allow_html=True,
+        st.markdown(
+            '<div class="speaking-banner">'
+            + (
+                "🔊 Sarah spreekt — microfoon start automatisch"
+                if lang == "nl"
+                else "🔊 Sarah is speaking — mic starts automatically"
             )
-        _autoplay_audio(st.session_state.audio_output)
+            + "</div>",
+            unsafe_allow_html=True,
+        )
+        _play_response(
+            st.session_state.audio_output,
+            auto_listen=conv_mode,
+        )
         st.session_state.audio_output = None
         st.session_state.sarah_speaking = False
 
@@ -443,13 +472,10 @@ def _render_chat():
                     text = speech_to_text(raw, lang)
                 if text and not text.startswith("["):
                     st.caption(f"🎙️ {'Herkend' if lang == 'nl' else 'Heard'}: *{text}*")
-                    with st.spinner(
-                        "Sarah denkt na…" if lang == "nl" else "Sarah is thinking…"
-                    ):
-                        _process_input(text)
+                    _process_input(text)
                     st.rerun()
-                else:
-                    st.warning(text)
+                elif text.startswith("["):
+                    st.error(text)
     except AttributeError:
         st.caption(
             "Upgrade Streamlit (≥1.38) voor microfooninvoer."
@@ -460,8 +486,7 @@ def _render_chat():
     # Text input (always available as fallback)
     placeholder = "Of typ uw bericht hier…" if lang == "nl" else "Or type your message…"
     if prompt := st.chat_input(placeholder):
-        with st.spinner("Sarah denkt na…" if lang == "nl" else "Sarah is thinking…"):
-            _process_input(prompt)
+        _process_input(prompt)
         st.rerun()
 
 
