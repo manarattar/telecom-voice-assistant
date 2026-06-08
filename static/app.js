@@ -263,64 +263,91 @@ function updateDashboard(newState) {
 
 let currentAudio = null;
 
-function showToast(msg, color = '#ef4444') {
-  const t = document.createElement('div');
-  t.textContent = msg;
-  Object.assign(t.style, {
-    position: 'fixed', bottom: '90px', left: '50%', transform: 'translateX(-50%)',
-    background: color, color: '#fff', padding: '8px 16px', borderRadius: '8px',
-    fontSize: '13px', zIndex: 999, maxWidth: '90vw', textAlign: 'center',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
-  });
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 5000);
+// ── Browser Speech Synthesis (primary TTS) ───────────────────────────────────
+
+let _voices = [];
+
+function _loadVoices() {
+  _voices = window.speechSynthesis?.getVoices() || [];
+}
+if (window.speechSynthesis) {
+  window.speechSynthesis.onvoiceschanged = _loadVoices;
+  _loadVoices();
 }
 
-async function playTTS(text) {
-  if (!state.voiceEnabled) {
-    showToast('🔇 Stem uitgeschakeld (geen ElevenLabs API-sleutel)', '#374151');
-    return;
-  }
+function _pickVoice(lang) {
+  if (!_voices.length) _loadVoices();
+  const tag = lang === 'nl' ? 'nl' : 'en';
 
-  setMode('playing');
+  // Prefer online (neural) voices, then any match
+  const online = _voices.filter((v) => v.lang.startsWith(tag) && !v.localService);
+  const any    = _voices.filter((v) => v.lang.startsWith(tag));
 
-  let blob;
-  try {
-    const r = await fetch('/api/speak', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
-    });
-    if (!r.ok) {
-      const err = await r.json().catch(() => ({}));
-      showToast('🔇 Stem mislukt: ' + (err.error || r.status));
-      setMode('idle');
-      return;
-    }
-    blob = await r.blob();
-  } catch (err) {
-    showToast('🔇 Netwerk fout bij stem: ' + err.message);
-    setMode('idle');
-    return;
-  }
+  // On Edge/Windows, prefer Microsoft voices (neural quality)
+  const ms = (online.length ? online : any).find((v) =>
+    v.name.toLowerCase().includes('microsoft'),
+  );
+  return ms || online[0] || any[0] || null;
+}
 
-  const url = URL.createObjectURL(blob);
-  currentAudio = new Audio(url);
+async function _speakBrowser(text, lang) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.lang  = lang === 'nl' ? 'nl-NL' : 'en-US';
+  utt.rate  = 0.92;
+  utt.pitch = 1.05;
+
+  const voice = _pickVoice(lang);
+  if (voice) utt.voice = voice;
 
   await new Promise((resolve) => {
-    currentAudio.onended  = resolve;
-    currentAudio.onerror  = (e) => {
-      showToast('🔇 Audio afspeelfout: ' + e.message);
-      resolve();
-    };
-    currentAudio.play().catch((e) => {
-      showToast('🔇 Autoplay geblokkeerd — klik ergens op de pagina en probeer opnieuw');
-      resolve();
-    });
+    utt.onend   = resolve;
+    utt.onerror = resolve;
+    window.speechSynthesis.speak(utt);
   });
+}
 
-  URL.revokeObjectURL(url);
-  currentAudio = null;
+// ── TTS router — ElevenLabs first, browser fallback ──────────────────────────
+
+async function playTTS(text) {
+  if (!text) return;
+  setMode('playing');
+
+  // Try ElevenLabs server TTS
+  if (state.voiceEnabled) {
+    try {
+      const r = await fetch('/api/speak', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+        signal: AbortSignal.timeout(12000),
+      });
+      if (r.ok) {
+        const blob = await r.blob();
+        const url  = URL.createObjectURL(blob);
+        currentAudio = new Audio(url);
+        await new Promise((resolve) => {
+          currentAudio.onended = resolve;
+          currentAudio.onerror = resolve;
+          currentAudio.play().catch(resolve);
+        });
+        URL.revokeObjectURL(url);
+        currentAudio = null;
+        setMode('idle');
+        return;
+      }
+      // Non-OK → fall through to browser TTS
+      state.voiceEnabled = false; // stop retrying this session
+    } catch (_) {
+      state.voiceEnabled = false;
+    }
+  }
+
+  // Browser SpeechSynthesis fallback (free, instant, works everywhere)
+  await _speakBrowser(text, state.language);
+  setMode('idle');
 }
 
 // ── Recording ─────────────────────────────────────────────────────────────────
