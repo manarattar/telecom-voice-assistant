@@ -1,8 +1,9 @@
 import json
 import re
 
-from app.config import MOCK_MODE, OPENAI_API_KEY, OPENAI_MODEL
 from openai import OpenAI
+
+from app.config import MOCK_MODE, OPENAI_API_KEY, OPENAI_MODEL
 
 _client = None
 
@@ -12,6 +13,26 @@ def get_client() -> OpenAI:
     if _client is None:
         _client = OpenAI(api_key=OPENAI_API_KEY)
     return _client
+
+
+def chat_stream(messages: list[dict], temperature: float = 0.7):
+    """Yields response text chunks for streaming display."""
+    if MOCK_MODE:
+        yield _mock_response(messages)
+        return
+    try:
+        stream = get_client().chat.completions.create(
+            model=OPENAI_MODEL,
+            messages=messages,
+            temperature=temperature,
+            stream=True,
+        )
+        for chunk in stream:
+            content = chunk.choices[0].delta.content
+            if content:
+                yield content
+    except Exception as e:
+        yield f"[LLM fout: {e}]"
 
 
 def chat(messages: list[dict], temperature: float = 0.7) -> str:

@@ -22,8 +22,8 @@ def text_to_speech(text: str) -> bytes | None:
         audio_iter = client.text_to_speech.convert(
             voice_id=ELEVENLABS_VOICE_ID,
             text=text,
-            model_id="eleven_multilingual_v2",
-            output_format="mp3_44100_128",
+            model_id="eleven_turbo_v2_5",
+            output_format="mp3_22050_32",
         )
         buf = io.BytesIO()
         for chunk in audio_iter:

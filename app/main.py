@@ -2,11 +2,12 @@ import base64
 import hashlib
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 from app.config import (AGENT_NAME, COMPANY_NAME, DEFAULT_LANGUAGE, MOCK_MODE,
                         VOICE_ENABLED)
 from app.conversation_manager import (ConversationState, build_greeting,
-                                      process_message)
+                                      process_message, process_message_stream)
 from app.escalation import escalate
 from app.intent_detector import analyze_intent
 from app.storage import load_conversations, save_conversation
@@ -40,26 +41,9 @@ _CSS = """
     color: #0d47a1;
     animation: pulse 1.5s infinite;
 }
-.speaking-banner {
-    background: linear-gradient(90deg, #e8f5e9, #c8e6c9);
-    border-left: 4px solid #388e3c;
-    border-radius: 8px;
-    padding: 12px 16px;
-    margin: 8px 0;
-    font-weight: 600;
-    color: #1b5e20;
-}
 @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.6; }
-}
-.conv-mode-active {
-    background: #1976d2;
-    color: white;
-    border-radius: 20px;
-    padding: 4px 12px;
-    font-size: 0.8rem;
-    display: inline-block;
 }
 </style>
 """
@@ -69,25 +53,43 @@ st.markdown(_CSS, unsafe_allow_html=True)
 # ── Audio helpers ────────────────────────────────────────────────────────────
 
 
-def _play_response(audio_bytes: bytes, auto_listen: bool = False):
-    """Play Sarah's voice response.
+def _play_response(audio_bytes: bytes):
+    """Play Sarah's response via iframe-embedded player.
 
-    Uses st.audio (native Streamlit) for guaranteed browser playback — the
-    HTML5 player is always visible and clickable if autoplay is blocked.
-    Also injects a direct-play attempt via st.markdown so it fires
-    automatically when the browser permits it.
+    Streamlit's components.v1.html() iframe carries allow="autoplay" so the
+    <audio autoplay> attribute works reliably.  Controls are always visible as
+    a click-to-play fallback when the browser blocks autoplay.
     """
-    # Native Streamlit player — always visible, always works
-    st.audio(audio_bytes, format="audio/mp3", autoplay=True)
-
-    # Fallback autoplay attempt in main page context (not an iframe)
     b64 = base64.b64encode(audio_bytes).decode()
-    st.markdown(
-        f'<audio autoplay style="display:none">'
-        f'<source src="data:audio/mp3;base64,{b64}" type="audio/mp3">'
-        f"</audio>",
-        unsafe_allow_html=True,
-    )
+    size_kb = len(audio_bytes) // 1024
+    html = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:6px;background:transparent;
+             font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
+  <div style="background:linear-gradient(90deg,#e8f5e9,#c8e6c9);
+              border-left:4px solid #388e3c;border-radius:8px;
+              padding:8px 14px;margin-bottom:6px;">
+    <span style="color:#1b5e20;font-weight:600;font-size:13px;">
+      🔊 {AGENT_NAME} &nbsp;
+      <span style="font-weight:400;color:#555;font-size:11px;">
+        {size_kb} KB — klik ▶ als het niet automatisch start
+      </span>
+    </span>
+  </div>
+  <audio controls autoplay id="r"
+         style="width:100%;height:40px;display:block;">
+    <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
+  </audio>
+  <script>
+    var a = document.getElementById('r');
+    a.play().catch(function(e) {{
+      console.warn('Autoplay blocked — controls available:', e.message);
+    }});
+  </script>
+</body>
+</html>"""
+    components.html(html, height=100)
 
 
 # ── Session state helpers ────────────────────────────────────────────────────
@@ -100,8 +102,6 @@ def _init():
         "audio_output": None,
         "last_audio_hash": "",
         "voice_on": VOICE_ENABLED,
-        "conv_mode": True,
-        "sarah_speaking": False,
         "pending_summary": False,
     }
     for k, v in defaults.items():
@@ -116,11 +116,11 @@ def _start_conversation(customer: dict, language: str):
     st.session_state.greeted = False
     st.session_state.audio_output = None
     st.session_state.last_audio_hash = ""
-    st.session_state.sarah_speaking = False
     st.session_state.pending_summary = False
 
 
 def _process_input(text: str):
+    """Blocking path used for typed text input."""
     state: ConversationState = st.session_state.conv_state
     if not state or not text.strip():
         return
@@ -138,7 +138,6 @@ def _process_input(text: str):
         audio = text_to_speech(response)
         if audio:
             st.session_state.audio_output = audio
-            st.session_state.sarah_speaking = True
 
     if state.escalated or state.turn_count % 5 == 0:
         generate_summary(state)
@@ -202,29 +201,6 @@ def _render_sidebar():
                 else "Schakel spraakreactie in/uit"
             ),
         )
-
-        st.session_state.conv_mode = st.toggle(
-            "🔄 Gespreksmodus",
-            value=st.session_state.get("conv_mode", True),
-            help=("Continu gesprek — na elk antwoord staat de microfoon klaar"),
-        )
-
-        if st.session_state.conv_mode:
-            lang = (
-                st.session_state.conv_state.language
-                if st.session_state.conv_state
-                else "nl"
-            )
-            if lang == "nl":
-                st.caption(
-                    "Spreek → Sarah antwoordt → spreek opnieuw. "
-                    "Geen knop nodig tussen beurten."
-                )
-            else:
-                st.caption(
-                    "Speak → Sarah replies → speak again. "
-                    "No button needed between turns."
-                )
 
         if MOCK_MODE:
             st.warning(
@@ -387,7 +363,6 @@ def _render_chat():
         return
 
     lang = state.language
-    conv_mode = st.session_state.conv_mode
 
     # Send greeting on first load
     if not st.session_state.greeted:
@@ -399,7 +374,6 @@ def _render_chat():
             audio = text_to_speech(greeting)
             if audio:
                 st.session_state.audio_output = audio
-                st.session_state.sarah_speaking = True
 
     # Conversation history
     chat_container = st.container(height=400)
@@ -410,29 +384,15 @@ def _render_chat():
             with st.chat_message(role, avatar=avatar):
                 st.markdown(msg["content"])
 
-    # Voice output — plays audio and auto-starts mic when done (conv mode)
+    # Audio player — shown above the mic so user sees it immediately
     if st.session_state.audio_output:
-        st.markdown(
-            '<div class="speaking-banner">'
-            + (
-                "🔊 Sarah spreekt — microfoon start automatisch"
-                if lang == "nl"
-                else "🔊 Sarah is speaking — mic starts automatically"
-            )
-            + "</div>",
-            unsafe_allow_html=True,
-        )
-        _play_response(
-            st.session_state.audio_output,
-            auto_listen=conv_mode,
-        )
+        _play_response(st.session_state.audio_output)
         st.session_state.audio_output = None
-        st.session_state.sarah_speaking = False
 
     st.divider()
 
-    # Conversation mode banner
-    if conv_mode and state.turn_count > 0:
+    # Listening indicator
+    if state.turn_count > 0:
         st.markdown(
             '<div class="listening-banner">'
             + (
@@ -444,7 +404,7 @@ def _render_chat():
             unsafe_allow_html=True,
         )
 
-    # Microphone input
+    # ── Voice input (streaming path) ─────────────────────────────────────────
     try:
         audio_label = (
             "🎤 Spreek uw vraag in" if lang == "nl" else "🎤 Record your message"
@@ -455,14 +415,60 @@ def _render_chat():
             h = hashlib.md5(raw).hexdigest()
             if h != st.session_state.last_audio_hash:
                 st.session_state.last_audio_hash = h
-                with st.spinner("Transcriberen…" if lang == "nl" else "Transcribing…"):
-                    text = speech_to_text(raw, lang)
+
+                # Stage 1 — transcribe
+                status = st.empty()
+                status.markdown(
+                    "🎙️ **Transcriberen…**" if lang == "nl" else "🎙️ **Transcribing…**"
+                )
+                text = speech_to_text(raw, lang)
+                status.empty()
+
                 if text and not text.startswith("["):
-                    st.caption(f"🎙️ {'Herkend' if lang == 'nl' else 'Heard'}: *{text}*")
-                    _process_input(text)
+                    # Show user message live
+                    with chat_container:
+                        with st.chat_message("user", avatar="👤"):
+                            st.markdown(text)
+
+                    # Analyze intent
+                    result = analyze_intent(text, state.messages, state.language)
+                    state.update_from_intent(result)
+
+                    # Stage 2 — stream LLM reply
+                    if state.should_escalate() and not state.escalated:
+                        state, response = escalate(state)
+                        state.resolved = False
+                        with chat_container:
+                            with st.chat_message("assistant", avatar="🎧"):
+                                st.markdown(response)
+                    else:
+                        with chat_container:
+                            with st.chat_message("assistant", avatar="🎧"):
+                                response = st.write_stream(
+                                    process_message_stream(state, text)
+                                )
+
+                    # Stage 3 — TTS (turbo model, ~1 s)
+                    if st.session_state.voice_on:
+                        tts_msg = (
+                            "🔊 Stem genereren…"
+                            if lang == "nl"
+                            else "🔊 Generating voice…"
+                        )
+                        with st.spinner(tts_msg):
+                            audio_bytes = text_to_speech(response)
+                        if audio_bytes:
+                            st.session_state.audio_output = audio_bytes
+
+                    if state.escalated or state.turn_count % 5 == 0:
+                        generate_summary(state)
+
+                    st.session_state.conv_state = state
                     st.rerun()
+
                 elif text.startswith("["):
                     st.error(text)
+
     except AttributeError:
         st.caption(
             "Upgrade Streamlit (≥1.38) voor microfooninvoer."
@@ -470,7 +476,7 @@ def _render_chat():
             else "Upgrade Streamlit (≥1.38) for microphone input."
         )
 
-    # Text input (always available as fallback)
+    # ── Text input (fallback) ─────────────────────────────────────────────────
     placeholder = "Of typ uw bericht hier…" if lang == "nl" else "Or type your message…"
     if prompt := st.chat_input(placeholder):
         _process_input(prompt)
@@ -496,7 +502,7 @@ def main():
     )
 
     st.title(f"📡 {COMPANY_NAME} — AI Klantenservice")
-    st.caption(f"Powered by GPT-4o-mini + ElevenLabs • Agent: {AGENT_NAME}")
+    st.caption(f"Powered by GPT-4o + ElevenLabs Turbo • Agent: {AGENT_NAME}")
 
     if st.session_state.conv_state is None:
         customers = load_customers()

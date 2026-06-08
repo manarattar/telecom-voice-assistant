@@ -2,13 +2,12 @@ import json
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
-from pathlib import Path
 
 from app.config import (AGENT_NAME, COMPANY_NAME, DATA_DIR, DEFAULT_LANGUAGE,
                         ESCALATION_TURN_LIMIT,
                         FRUSTRATION_ESCALATION_THRESHOLD)
 from app.intent_detector import IntentResult
-from app.llm import chat
+from app.llm import chat, chat_stream
 
 KB_PATH = DATA_DIR / "knowledge_base.json"
 _kb_cache: dict = {}
@@ -156,6 +155,24 @@ def process_message(
 
     state.messages.append({"role": "assistant", "content": response})
     return state, response
+
+
+def process_message_stream(state: ConversationState, user_message: str):
+    """Generator — yields response text chunks and updates state on completion."""
+    state.messages.append({"role": "user", "content": user_message})
+    state.turn_count += 1
+    state.troubleshooting_step += 1
+
+    system = _build_system_prompt(state)
+    full_messages = [{"role": "system", "content": system}] + state.messages
+
+    chunks: list[str] = []
+    for chunk in chat_stream(full_messages, temperature=0.65):
+        chunks.append(chunk)
+        yield chunk
+
+    response = "".join(chunks)
+    state.messages.append({"role": "assistant", "content": response})
 
 
 def build_greeting(state: ConversationState) -> str:
