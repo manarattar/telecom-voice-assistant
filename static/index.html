@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TelecomNL — AI Klantenservice</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+  <div class="disclaimer">
+    ⚠️ Demo prototype — Geen echte TelecomNL klantenservice
+  </div>
+
+  <div id="app">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="brand">📡 TelecomNL</div>
+      <div class="header-right">
+        <select id="customerSelect" class="select-pill" title="Klant selecteren"></select>
+        <button id="langToggle" class="btn-pill">🇳🇱 NL</button>
+        <button id="newCallBtn" class="btn-pill btn-icon" title="Nieuw gesprek">↺</button>
+      </div>
+    </header>
+
+    <!-- Agent card -->
+    <div class="agent-card">
+      <div class="avatar-wrap" id="avatarWrap">
+        <div class="ring r1"></div>
+        <div class="ring r2"></div>
+        <div class="ring r3"></div>
+        <div class="avatar">🎧</div>
+      </div>
+      <div class="agent-name">Sarah</div>
+      <div class="agent-status" id="agentStatus">
+        <span class="status-dot"></span>
+        <span id="statusText">Beschikbaar</span>
+      </div>
+    </div>
+
+    <!-- Transcript -->
+    <div class="transcript-wrap">
+      <div class="transcript" id="transcript">
+        <div class="transcript-empty" id="transcriptEmpty">
+          Gesprek wordt geladen…
+        </div>
+      </div>
+    </div>
+
+    <!-- Dashboard strip -->
+    <div class="dash-strip" id="dashStrip">
+      <div class="dash-chip">
+        <span class="dash-label">Issue</span>
+        <span class="dash-val" id="dIntent">—</span>
+      </div>
+      <div class="dash-chip">
+        <span class="dash-label">Sentiment</span>
+        <span class="dash-val" id="dSentiment">😐</span>
+      </div>
+      <div class="dash-chip">
+        <span class="dash-label">Vertrouwen</span>
+        <span class="dash-val" id="dConf">—</span>
+      </div>
+      <div class="dash-chip">
+        <span class="dash-label">Beurten</span>
+        <span class="dash-val" id="dTurns">0</span>
+      </div>
+      <div class="dash-chip dash-esc" id="escChip" style="display:none">
+        <span class="dash-val">🚨 Escalatie</span>
+      </div>
+    </div>
+
+    <!-- Mic area -->
+    <div class="mic-area">
+      <div class="waveform" id="waveform">
+        <span></span><span></span><span></span><span></span><span></span>
+        <span></span><span></span>
+      </div>
+
+      <button class="mic-btn" id="micBtn" aria-label="Opnemen starten">
+        <!-- Idle / playing: mic icon -->
+        <svg class="icon-mic" id="iconMic" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+          <rect x="9" y="2" width="6" height="11" rx="3"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" y1="19" x2="12" y2="23"/>
+          <line x1="8" y1="23" x2="16" y2="23"/>
+        </svg>
+        <!-- Recording: stop icon -->
+        <svg class="icon-stop" id="iconStop" viewBox="0 0 24 24" fill="currentColor"
+             style="display:none">
+          <rect x="6" y="6" width="12" height="12" rx="2.5"/>
+        </svg>
+        <!-- Processing: spinner -->
+        <div class="spin" id="spin" style="display:none"></div>
+      </button>
+
+      <div class="mic-label" id="micLabel">Klik om te spreken</div>
+    </div>
+
+  </div><!-- /#app -->
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

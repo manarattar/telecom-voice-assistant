@@ -1,1 +1,1 @@
-web: streamlit run app/main.py --server.port $PORT --server.address 0.0.0.0 --server.headless true
+web: PYTHONPATH=/opt/render/project/src uvicorn server:app --host 0.0.0.0 --port $PORT
