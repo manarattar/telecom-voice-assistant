@@ -14,7 +14,7 @@ def _get_client():
     return _client
 
 
-def text_to_speech(text: str) -> bytes | None:
+def text_to_speech(text: str, raise_errors: bool = False) -> bytes | None:
     if not VOICE_ENABLED or not text.strip():
         return None
     try:
@@ -28,7 +28,10 @@ def text_to_speech(text: str) -> bytes | None:
         buf = io.BytesIO()
         for chunk in audio_iter:
             buf.write(chunk)
-        return buf.getvalue()
+        data = buf.getvalue()
+        return data if data else None
     except Exception as e:
         print(f"[ElevenLabs TTS fout]: {e}")
+        if raise_errors:
+            raise
         return None

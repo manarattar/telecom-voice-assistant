@@ -189,12 +189,12 @@ def voice_check():
         result["error"] = "ELEVENLABS_API_KEY not set"
         return result
     try:
-        audio = text_to_speech("Hallo, dit is een test.")
+        audio = text_to_speech("Hallo, dit is een test.", raise_errors=True)
         if audio:
             result["ok"] = True
             result["bytes"] = len(audio)
         else:
-            result["error"] = "text_to_speech returned None"
+            result["error"] = "API returned empty audio"
     except Exception:
         result["error"] = traceback.format_exc()
     return result
