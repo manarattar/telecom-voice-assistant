@@ -2,16 +2,25 @@
 
 'use strict';
 
+// When served from voice.manarattar.com (Vercel) the backend lives on Render.
+// When served from the Render service itself, use relative paths.
+const API_BASE = (() => {
+  const h = window.location.hostname;
+  if (h === 'localhost' || h === '127.0.0.1') return '';           // local dev
+  if (h.includes('onrender.com')) return '';                        // Render serves both
+  return 'https://telecom-voice-assistant.onrender.com';            // Vercel → Render
+})();
+
 // ── API client ───────────────────────────────────────────────────────────────
 
 const API = {
   async customers() {
-    const r = await fetch('/api/customers');
+    const r = await fetch(API_BASE + '/api/customers');
     return r.json();
   },
 
   async greet(customer, language) {
-    const r = await fetch('/api/greet', {
+    const r = await fetch(API_BASE + '/api/greet', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ customer, language }),
@@ -23,7 +32,7 @@ const API = {
     const form = new FormData();
     form.append('audio', blob, 'audio.webm');
     form.append('language', language);
-    const r = await fetch('/api/transcribe', { method: 'POST', body: form });
+    const r = await fetch(API_BASE + '/api/transcribe', { method: 'POST', body: form });
     return r.json();
   },
 
@@ -32,7 +41,7 @@ const API = {
    * Returns the final state object from the 'done' event.
    */
   async chat(payload, onChunk) {
-    const r = await fetch('/api/chat', {
+    const r = await fetch(API_BASE + '/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -315,7 +324,7 @@ async function playTTS(text) {
   setMode('playing');
 
   try {
-    const r = await fetch('/api/speak', {
+    const r = await fetch(API_BASE + '/api/speak', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text }),
