@@ -263,9 +263,10 @@ function updateDashboard(newState) {
 
 let currentAudio = null;
 
-// ── iOS audio unlock ─────────────────────────────────────────────────────────
-// iOS blocks all audio until the user taps. Resuming an AudioContext on first
-// tap unlocks subsequent audio.play() calls even after async operations.
+// ── AudioContext (Web Audio API) ──────────────────────────────────────────────
+// On iOS, new Audio().play() requires a gesture on EVERY call.
+// AudioContext is different: once resumed inside a gesture, decodeAudioData +
+// BufferSource.start() work freely even after long async chains.
 
 let _audioCtx = null;
 
@@ -273,14 +274,38 @@ function _unlockAudio() {
   if (_audioCtx) return;
   try {
     _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (_audioCtx.state === 'suspended') _audioCtx.resume();
-    // Play a silent buffer so iOS registers the gesture
-    const buf = _audioCtx.createBuffer(1, 1, 22050);
-    const src = _audioCtx.createBufferSource();
-    src.buffer = buf;
-    src.connect(_audioCtx.destination);
+  } catch (_) { return; }
+
+  // Resume (required on iOS) and play a silent buffer to register the gesture
+  const resume = _audioCtx.state === 'suspended'
+    ? _audioCtx.resume()
+    : Promise.resolve();
+
+  resume.then(() => {
+    try {
+      const buf = _audioCtx.createBuffer(1, 1, 22050);
+      const src = _audioCtx.createBufferSource();
+      src.buffer = buf;
+      src.connect(_audioCtx.destination);
+      src.start(0);
+    } catch (_) {}
+  });
+}
+
+async function _playViaWebAudio(arrayBuffer) {
+  if (!_audioCtx) return;
+  if (_audioCtx.state === 'suspended') await _audioCtx.resume();
+
+  // decodeAudioData detaches the buffer, so slice a copy
+  const decoded = await _audioCtx.decodeAudioData(arrayBuffer.slice(0));
+  const src = _audioCtx.createBufferSource();
+  src.buffer = decoded;
+  src.connect(_audioCtx.destination);
+
+  await new Promise((resolve) => {
+    src.onended = resolve;
     src.start(0);
-  } catch (_) {}
+  });
 }
 
 // ── TTS — server audio (ElevenLabs → OpenAI TTS fallback) ────────────────────
@@ -297,18 +322,27 @@ async function playTTS(text) {
     });
 
     if (r.ok) {
-      const blob = await r.blob();
-      const url  = URL.createObjectURL(blob);
-      currentAudio = new Audio(url);
-      await new Promise((resolve) => {
-        currentAudio.onended = resolve;
-        currentAudio.onerror = resolve;
-        currentAudio.play().catch(resolve);
-      });
-      URL.revokeObjectURL(url);
-      currentAudio = null;
+      const arrayBuffer = await r.arrayBuffer();
+      if (_audioCtx) {
+        // Web Audio path — works on iOS after AudioContext unlock
+        await _playViaWebAudio(arrayBuffer);
+      } else {
+        // Desktop fallback — plain Audio element
+        const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
+        const url  = URL.createObjectURL(blob);
+        currentAudio = new Audio(url);
+        await new Promise((resolve) => {
+          currentAudio.onended = resolve;
+          currentAudio.onerror = resolve;
+          currentAudio.play().catch(resolve);
+        });
+        URL.revokeObjectURL(url);
+        currentAudio = null;
+      }
     }
-  } catch (_) {}
+  } catch (e) {
+    console.error('TTS playback error:', e);
+  }
 
   setMode('idle');
 }
