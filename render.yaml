@@ -3,7 +3,7 @@ services:
     name: telecom-voice-assistant
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: streamlit run app/main.py --server.port $PORT --server.address 0.0.0.0 --server.headless true
+    startCommand: PYTHONPATH=/opt/render/project/src streamlit run app/main.py --server.port $PORT --server.address 0.0.0.0 --server.headless true
     envVars:
       - key: OPENAI_API_KEY
         sync: false
