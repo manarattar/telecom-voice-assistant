@@ -263,90 +263,53 @@ function updateDashboard(newState) {
 
 let currentAudio = null;
 
-// ── Browser Speech Synthesis (primary TTS) ───────────────────────────────────
+// ── iOS audio unlock ─────────────────────────────────────────────────────────
+// iOS blocks all audio until the user taps. Resuming an AudioContext on first
+// tap unlocks subsequent audio.play() calls even after async operations.
 
-let _voices = [];
+let _audioCtx = null;
 
-function _loadVoices() {
-  _voices = window.speechSynthesis?.getVoices() || [];
-}
-if (window.speechSynthesis) {
-  window.speechSynthesis.onvoiceschanged = _loadVoices;
-  _loadVoices();
-}
-
-function _pickVoice(lang) {
-  if (!_voices.length) _loadVoices();
-  const tag = lang === 'nl' ? 'nl' : 'en';
-
-  // Prefer online (neural) voices, then any match
-  const online = _voices.filter((v) => v.lang.startsWith(tag) && !v.localService);
-  const any    = _voices.filter((v) => v.lang.startsWith(tag));
-
-  // On Edge/Windows, prefer Microsoft voices (neural quality)
-  const ms = (online.length ? online : any).find((v) =>
-    v.name.toLowerCase().includes('microsoft'),
-  );
-  return ms || online[0] || any[0] || null;
+function _unlockAudio() {
+  if (_audioCtx) return;
+  try {
+    _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (_audioCtx.state === 'suspended') _audioCtx.resume();
+    // Play a silent buffer so iOS registers the gesture
+    const buf = _audioCtx.createBuffer(1, 1, 22050);
+    const src = _audioCtx.createBufferSource();
+    src.buffer = buf;
+    src.connect(_audioCtx.destination);
+    src.start(0);
+  } catch (_) {}
 }
 
-async function _speakBrowser(text, lang) {
-  if (!window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-
-  const utt = new SpeechSynthesisUtterance(text);
-  utt.lang  = lang === 'nl' ? 'nl-NL' : 'en-US';
-  utt.rate  = 0.92;
-  utt.pitch = 1.05;
-
-  const voice = _pickVoice(lang);
-  if (voice) utt.voice = voice;
-
-  await new Promise((resolve) => {
-    utt.onend   = resolve;
-    utt.onerror = resolve;
-    window.speechSynthesis.speak(utt);
-  });
-}
-
-// ── TTS router — ElevenLabs first, browser fallback ──────────────────────────
+// ── TTS — server audio (ElevenLabs → OpenAI TTS fallback) ────────────────────
 
 async function playTTS(text) {
   if (!text) return;
   setMode('playing');
 
-  // Try ElevenLabs server TTS
-  if (state.voiceEnabled) {
-    try {
-      const r = await fetch('/api/speak', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
-        signal: AbortSignal.timeout(12000),
-      });
-      if (r.ok) {
-        const blob = await r.blob();
-        const url  = URL.createObjectURL(blob);
-        currentAudio = new Audio(url);
-        await new Promise((resolve) => {
-          currentAudio.onended = resolve;
-          currentAudio.onerror = resolve;
-          currentAudio.play().catch(resolve);
-        });
-        URL.revokeObjectURL(url);
-        currentAudio = null;
-        setMode('idle');
-        return;
-      }
-      // Non-OK → fall through to browser TTS
-      state.voiceEnabled = false; // stop retrying this session
-    } catch (_) {
-      state.voiceEnabled = false;
-    }
-  }
+  try {
+    const r = await fetch('/api/speak', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
 
-  // Browser SpeechSynthesis fallback (free, instant, works everywhere)
-  await _speakBrowser(text, state.language);
+    if (r.ok) {
+      const blob = await r.blob();
+      const url  = URL.createObjectURL(blob);
+      currentAudio = new Audio(url);
+      await new Promise((resolve) => {
+        currentAudio.onended = resolve;
+        currentAudio.onerror = resolve;
+        currentAudio.play().catch(resolve);
+      });
+      URL.revokeObjectURL(url);
+      currentAudio = null;
+    }
+  } catch (_) {}
+
   setMode('idle');
 }
 
@@ -521,8 +484,9 @@ async function init() {
     startConversation(state.customer, state.language);
   });
 
-  // Event: mic button
+  // Event: mic button — unlock audio on first tap (required for iOS)
   micBtn.addEventListener('click', () => {
+    _unlockAudio();
     if (uiMode === 'idle') startRecording();
     else if (uiMode === 'recording') stopRecording();
   });
