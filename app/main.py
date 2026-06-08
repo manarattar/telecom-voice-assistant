@@ -2,7 +2,6 @@ import base64
 import hashlib
 
 import streamlit as st
-import streamlit.components.v1 as components
 
 from app.config import (AGENT_NAME, COMPANY_NAME, DEFAULT_LANGUAGE, MOCK_MODE,
                         VOICE_ENABLED)
@@ -71,36 +70,24 @@ st.markdown(_CSS, unsafe_allow_html=True)
 
 
 def _play_response(audio_bytes: bytes, auto_listen: bool = False):
-    """Play Sarah's response and optionally auto-start the mic when done."""
-    b64 = base64.b64encode(audio_bytes).decode()
-    auto_js = (
-        """
-        audio.addEventListener('ended', function() {
-            setTimeout(function() {
-                var btn = window.parent.document.querySelector(
-                    '[data-testid="stAudioInput"] button'
-                );
-                if (btn) { btn.click(); }
-            }, 600);
-        });
-        """
-        if auto_listen
-        else ""
-    )
-    html = f"""
-        <audio id="sa" autoplay controls style="width:100%;border-radius:8px">
-            <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
-        </audio>
-        <script>
-        (function() {{
-            var audio = document.getElementById('sa');
-            if (!audio) return;
-            audio.play().catch(function(){{}});
-            {auto_js}
-        }})();
-        </script>
+    """Play Sarah's voice response.
+
+    Uses st.audio (native Streamlit) for guaranteed browser playback — the
+    HTML5 player is always visible and clickable if autoplay is blocked.
+    Also injects a direct-play attempt via st.markdown so it fires
+    automatically when the browser permits it.
     """
-    components.html(html, height=60)
+    # Native Streamlit player — always visible, always works
+    st.audio(audio_bytes, format="audio/mp3", autoplay=True)
+
+    # Fallback autoplay attempt in main page context (not an iframe)
+    b64 = base64.b64encode(audio_bytes).decode()
+    st.markdown(
+        f'<audio autoplay style="display:none">'
+        f'<source src="data:audio/mp3;base64,{b64}" type="audio/mp3">'
+        f"</audio>",
+        unsafe_allow_html=True,
+    )
 
 
 # ── Session state helpers ────────────────────────────────────────────────────
