@@ -526,11 +526,36 @@ body {
   animation: none;
 }
 
+/* ConvAI: session active — always-on listening state */
+.mic-btn.active {
+  background: var(--agent-color);
+  box-shadow: 0 4px 24px color-mix(in srgb, var(--agent-color) 35%, transparent),
+              0 0 0 6px  color-mix(in srgb, var(--agent-color) 18%, transparent),
+              0 0 0 12px color-mix(in srgb, var(--agent-color)  8%, transparent);
+  animation: pulse-agent 2s ease-in-out infinite;
+}
+/* ConvAI: agent is speaking */
+.mic-btn.speaking {
+  background: var(--agent-color);
+  box-shadow: 0 4px 24px color-mix(in srgb, var(--agent-color) 35%, transparent),
+              0 2px 8px rgba(0,0,0,0.4);
+  cursor: pointer;
+  animation: none;
+}
+@keyframes pulse-agent {
+  0%, 100% { box-shadow: 0 4px 24px color-mix(in srgb, var(--agent-color) 35%, transparent),
+                         0 0 0 6px  color-mix(in srgb, var(--agent-color) 18%, transparent),
+                         0 0 0 12px color-mix(in srgb, var(--agent-color)  8%, transparent); }
+  50%       { box-shadow: 0 4px 32px color-mix(in srgb, var(--agent-color) 50%, transparent),
+                         0 0 0 9px  color-mix(in srgb, var(--agent-color) 22%, transparent),
+                         0 0 0 18px color-mix(in srgb, var(--agent-color) 10%, transparent); }
+}
+
 .mic-btn.playing {
   background: var(--agent-color, var(--sarah));
   box-shadow: 0 4px 24px color-mix(in srgb, var(--agent-color, var(--sarah)) 35%, transparent),
               0 2px 8px rgba(0,0,0,0.4);
-  cursor: pointer;   /* barge-in: clickable during playback */
+  cursor: pointer;
   animation: none;
 }
 

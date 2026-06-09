@@ -26,3 +26,5 @@ COMPANY_NAME = "TelecomNL"
 ESCALATION_TURN_LIMIT = 6
 FRUSTRATION_ESCALATION_THRESHOLD = 3
 MIN_CONFIDENCE_THRESHOLD = 0.25
+
+BACKEND_URL = os.getenv("BACKEND_URL", "https://telecom-voice-assistant.onrender.com")

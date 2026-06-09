@@ -3,16 +3,18 @@
 import json
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, UploadFile
+from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from app.agents import DEFAULT_AGENT_ID, get_agent
-from app.config import VOICE_ENABLED
+from app.config import BACKEND_URL, COMPANY_NAME, VOICE_ENABLED
 from app.conversation_manager import (ConversationState, build_greeting,
                                       process_turn_with_tools)
+from app.elevenlabs_agents import (build_agent_prompt, get_or_create_agent,
+                                   get_signed_url)
 from app.escalation import escalate
 from app.intent_detector import analyze_intent
 from app.stt import speech_to_text
@@ -74,6 +76,17 @@ class CallEndRequest(BaseModel):
     escalated: bool = False
     resolved: bool = False
     rating: int = 0
+
+
+class RealtimeSessionRequest(BaseModel):
+    agent_id: str = DEFAULT_AGENT_ID
+    customer: dict = Field(default_factory=dict)
+    language: str = "nl"
+
+
+class AnalyzeRequest(BaseModel):
+    text: str
+    language: str = "nl"
 
 
 # ── State helpers ─────────────────────────────────────────────────────────────
@@ -248,6 +261,104 @@ def speak_stream(req: SpeakRequest):
 def call_end(req: CallEndRequest):
     """Acknowledge call end — could persist to DB in future."""
     return {"ok": True, "session": req.session_id}
+
+
+@app.post("/api/realtime-session")
+def realtime_session(req: RealtimeSessionRequest):
+    """Return a signed ElevenLabs WebSocket URL + per-session context."""
+    try:
+        el_agent_id = get_or_create_agent(req.agent_id, BACKEND_URL)
+        signed_url = get_signed_url(el_agent_id)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=503)
+
+    agent = get_agent(req.agent_id)
+    c = req.customer
+    name = c.get("name", "")
+    lang = req.language
+
+    if lang == "nl":
+        first_message = (
+            f"Goedendag{', ' + name if name else ''}! "
+            f"U spreekt met {agent.name} van {COMPANY_NAME}. "
+            "Hoe kan ik u vandaag helpen?"
+        )
+        customer_ctx = (
+            (
+                f"\nACTUELE KLANT:\n"
+                f"  Naam: {c.get('name', 'onbekend')}\n"
+                f"  Klantnummer: {c.get('account_number', 'onbekend')}\n"
+                f"  Pakket: {c.get('plan_name', 'onbekend')}\n"
+                f"  Status: {c.get('status', 'onbekend')}\n"
+                f"  Openstaand: €{c.get('outstanding_balance', 0):.2f}\n"
+                f"  Opmerking: {c.get('notes', '')}\n"
+            )
+            if name
+            else ""
+        )
+    else:
+        first_message = (
+            f"Good day{', ' + name if name else ''}! "
+            f"You're speaking with {agent.name} from {COMPANY_NAME}. "
+            "How can I help you today?"
+        )
+        customer_ctx = (
+            (
+                f"\nCURRENT CUSTOMER:\n"
+                f"  Name: {c.get('name', 'unknown')}\n"
+                f"  Account: {c.get('account_number', 'unknown')}\n"
+                f"  Plan: {c.get('plan_name', 'unknown')}\n"
+                f"  Status: {c.get('status', 'unknown')}\n"
+                f"  Balance: €{c.get('outstanding_balance', 0):.2f}\n"
+                f"  Notes: {c.get('notes', '')}\n"
+            )
+            if name
+            else ""
+        )
+
+    return {
+        "signed_url": signed_url,
+        "first_message": first_message,
+        "full_prompt": build_agent_prompt(agent, customer_ctx),
+        "agent": {
+            "id": agent.id,
+            "name": agent.name,
+            "emoji": agent.emoji,
+            "color": agent.color,
+        },
+    }
+
+
+@app.post("/api/tools/{tool_name}")
+async def tool_webhook(tool_name: str, request: Request):
+    """ElevenLabs calls this when the LLM invokes a diagnostic tool."""
+    from app.tools import execute_tool
+
+    try:
+        args = await request.json()
+    except Exception:
+        args = {}
+
+    # Resolve customer from account_id if present
+    account_id = args.get("account_id", "")
+    customers = load_customers()
+    customer = next((c for c in customers if c.get("account_number") == account_id), {})
+
+    result = execute_tool(tool_name, args, customer)
+    return result
+
+
+@app.post("/api/analyze")
+def analyze(req: AnalyzeRequest):
+    """Lightweight intent + sentiment analysis for ConvAI transcript events."""
+    result = analyze_intent(req.text, [], req.language)
+    return {
+        "intent": result.intent,
+        "sentiment": result.sentiment,
+        "frustration_level": result.frustration_level,
+        "confidence": result.confidence,
+        "key_issue": result.key_issue,
+    }
 
 
 @app.get("/api/voice-check")
