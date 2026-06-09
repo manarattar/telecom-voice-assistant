@@ -406,13 +406,12 @@ async function startSession() {
   _ws = new WebSocket(session.signed_url);
 
   _ws.onopen = () => {
+    const salutation = state.customer?.name ? `, ${state.customer.name}` : '';
     _ws.send(JSON.stringify({
       type: 'conversation_initiation_client_data',
-      conversation_config_override: {
-        agent: { first_message: session.first_message },
-      },
       dynamic_variables: {
         customer_context: session.customer_context || '',
+        customer_salutation: salutation,
       },
     }));
     // Do NOT start audio here — wait for conversation_initiation_metadata

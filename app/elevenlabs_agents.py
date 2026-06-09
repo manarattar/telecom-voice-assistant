@@ -138,7 +138,15 @@ def _create_agent(agent_id: str, backend_url: str) -> str:
                     "temperature": 0.65,
                     "tools": _tool_defs(backend_url),
                 },
-                "first_message": "",  # overridden per-session
+                "first_message": (
+                    f"Goedendag{{{{customer_salutation}}}}! "
+                    f"U spreekt met {agent.name} van {COMPANY_NAME}. "
+                    "Hoe kan ik u vandaag helpen?"
+                    if agent.default_language == "nl"
+                    else f"Good day{{{{customer_salutation}}}}! "
+                    f"You're speaking with {agent.name} from {COMPANY_NAME}. "
+                    "How can I help you today?"
+                ),
                 "language": agent.default_language,
             },
             "tts": {
