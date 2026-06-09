@@ -398,59 +398,50 @@ function _stopCurrentAudio() {
   }
 }
 
-// ── TTS sentence queue ────────────────────────────────────────────────────────
-// Fetch audio for each sentence immediately as it arrives; play in order.
-let _ttsQueue       = [];   // array of Promise<ArrayBuffer|null>
-let _ttsPlaying     = false;
-let _ttsAborted     = false;
+// ── TTS (single call per response, AbortController) ──────────────────────────
+let _activeTTSCtrl = null;
 
-function _abortTTS() {
-  _ttsAborted = true;
-  _ttsQueue   = [];
+function abortTTS() {
+  if (_activeTTSCtrl) { _activeTTSCtrl.abort(); _activeTTSCtrl = null; }
   _stopCurrentAudio();
-  _ttsPlaying = false;
 }
 
-function _resetTTS() {
-  _ttsAborted = false;
-  _ttsQueue   = [];
-  _ttsPlaying = false;
-}
+async function speakText(text) {
+  if (!text.trim() || !state.voiceEnabled) { setMode('idle'); return; }
 
-function enqueueTTS(text) {
-  if (!text.trim() || _ttsAborted) return;
-  const fetchPromise = API.speakBytes(text, state.agentId, state.frustrationLevel);
-  _ttsQueue.push(fetchPromise);
-  if (!_ttsPlaying) _drainTTSQueue();
-}
-
-async function _drainTTSQueue() {
-  _ttsPlaying = true;
+  abortTTS();
+  const ctrl = new AbortController();
+  _activeTTSCtrl = ctrl;
   setMode('playing');
 
-  while (_ttsQueue.length > 0 && !_ttsAborted) {
-    const p = _ttsQueue.shift();
-    try {
-      const buf = await p;
-      if (!buf || _ttsAborted) continue;
-      if (_audioCtx) {
-        await _playBuffer(buf);
-      } else {
-        const blob = new Blob([buf], { type: 'audio/mpeg' });
-        const url  = URL.createObjectURL(blob);
-        const audio = new Audio(url);
-        await new Promise(res => { audio.onended = res; audio.onerror = res; audio.play().catch(res); });
-        URL.revokeObjectURL(url);
-      }
-    } catch (_) {}
+  try {
+    const r = await fetch(API_BASE + '/api/speak-stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text,
+        agent_id: state.agentId,
+        frustration_level: state.frustrationLevel,
+      }),
+      signal: ctrl.signal,
+    });
+
+    if (!r.ok) throw new Error(`TTS ${r.status}`);
+
+    // Collect the streaming response — ElevenLabs starts sending chunks
+    // immediately so this resolves faster than the old non-streaming endpoint.
+    const buf = await r.arrayBuffer();
+    if (ctrl.signal.aborted) return;
+
+    await _playBuffer(buf);
+  } catch (e) {
+    if (e.name !== 'AbortError') console.warn('[TTS]', e.message);
+  } finally {
+    if (_activeTTSCtrl === ctrl) _activeTTSCtrl = null;
   }
 
-  _ttsPlaying = false;
-  if (!_ttsAborted) setMode('idle');
+  if (!ctrl.signal.aborted) setMode('idle');
 }
-
-// Sentence boundary detector
-const SENTENCE_END = /[^.!?]*[.!?]["']?(\s|$)/;
 
 // ── Waveform: real AnalyserNode ───────────────────────────────────────────────
 let _analyser  = null;
@@ -603,10 +594,9 @@ function stopRecording() {
 }
 
 function bargeIn() {
-  _abortTTS();
+  abortTTS();
   setMode('idle');
-  // Small delay so abort propagates before we start new recording
-  setTimeout(() => { _resetTTS(); startRecording(); }, 80);
+  setTimeout(() => startRecording(), 80);
 }
 
 // ── Chat processing ───────────────────────────────────────────────────────────
@@ -637,9 +627,7 @@ async function processAudio() {
   textNode.appendChild(cursor);
 
   let fullResponse   = '';
-  let sentenceBuf    = '';
   let activeToolWrap = null;
-  _resetTTS();
 
   const payload = {
     message: text,
@@ -669,19 +657,9 @@ async function processAudio() {
         activeToolWrap = null;
       } else if (event.type === 'chunk') {
         fullResponse += event.text;
-        sentenceBuf  += event.text;
         textNode.textContent = fullResponse;
         textNode.appendChild(cursor);
         transcript.scrollTop = transcript.scrollHeight;
-
-        // Sentence-level TTS: fire TTS as soon as sentence completes
-        const match = SENTENCE_END.exec(sentenceBuf);
-        if (match) {
-          const endIdx = match.index + match[0].length;
-          const sentence = sentenceBuf.slice(0, endIdx).trim();
-          sentenceBuf = sentenceBuf.slice(endIdx);
-          if (sentence && state.voiceEnabled) enqueueTTS(sentence);
-        }
       }
     });
   } catch (err) {
@@ -695,16 +673,13 @@ async function processAudio() {
   cursor.remove();
   textNode.textContent = fullResponse;
 
-  // Flush any remaining partial sentence
-  if (sentenceBuf.trim() && state.voiceEnabled) enqueueTTS(sentenceBuf.trim());
-
   if (newState) {
     updateDashboard(newState);
     pushChartPoint(newState.sentiment, newState.turnCount);
   }
 
-  // If no TTS queued (voice disabled), go idle immediately
-  if (_ttsQueue.length === 0 && !_ttsPlaying) setMode('idle');
+  // Speak full response in one TTS call — text is already visible while it loads
+  await speakText(fullResponse);
 }
 
 // ── Call history (localStorage) ───────────────────────────────────────────────
@@ -866,8 +841,7 @@ async function startConversation(customer, language, agentId) {
   state.agentId  = agentId  || state.agentId;
   state.customer = customer;
   stopVAD();
-  _abortTTS();
-  _resetTTS();
+  abortTTS();
   clearTranscript();
   resetChart();
   $('escChip').style.display = 'none';
@@ -879,12 +853,7 @@ async function startConversation(customer, language, agentId) {
   updateDashboard(data.state);
   addBubble('assistant', data.greeting);
 
-  if (state.voiceEnabled) {
-    _resetTTS();
-    enqueueTTS(data.greeting);
-  } else {
-    setMode('idle');
-  }
+  await speakText(data.greeting);
 }
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────

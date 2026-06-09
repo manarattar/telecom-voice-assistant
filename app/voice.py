@@ -76,6 +76,40 @@ def _tts_openai(text: str, voice: str = "nova") -> bytes:
     return response.content
 
 
+def text_to_speech_stream(
+    text: str,
+    agent_id: str = "sarah",
+    frustration_level: int = 1,
+):
+    """Yield raw MP3 bytes using ElevenLabs streaming, fallback to OpenAI."""
+    if not text.strip():
+        return
+
+    agent = get_agent(agent_id)
+    settings = _voice_settings(frustration_level)
+
+    if VOICE_ENABLED:
+        kwargs: dict = dict(
+            voice_id=agent.elevenlabs_voice_id,
+            text=text,
+            model_id="eleven_multilingual_v2",
+            output_format="mp3_44100_128",
+        )
+        if settings is not None:
+            kwargs["voice_settings"] = settings
+        try:
+            yield from _elevenlabs().text_to_speech.convert_as_stream(**kwargs)
+            return
+        except Exception as e:
+            print(f"[ElevenLabs stream TTS] failed, falling back: {e}")
+
+    if OPENAI_API_KEY:
+        try:
+            yield _tts_openai(text, voice=agent.openai_voice)
+        except Exception as e:
+            print(f"[OpenAI TTS] failed: {e}")
+
+
 def text_to_speech(
     text: str,
     agent_id: str = "sarah",

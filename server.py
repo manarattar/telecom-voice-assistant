@@ -3,6 +3,12 @@
 import json
 from pathlib import Path
 
+from fastapi import FastAPI, File, Form, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, Response, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
+
 from app.agents import DEFAULT_AGENT_ID, get_agent
 from app.config import VOICE_ENABLED
 from app.conversation_manager import (ConversationState, build_greeting,
@@ -12,12 +18,7 @@ from app.intent_detector import analyze_intent
 from app.stt import speech_to_text
 from app.summary_generator import generate_summary
 from app.utils import load_customers
-from app.voice import text_to_speech
-from fastapi import FastAPI, File, Form, UploadFile
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response, StreamingResponse
-from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from app.voice import text_to_speech, text_to_speech_stream
 
 app = FastAPI(title="TelecomNL AI Support")
 
@@ -223,6 +224,24 @@ def speak(req: SpeakRequest):
     if not audio_bytes:
         return JSONResponse({"error": "TTS niet beschikbaar"}, status_code=503)
     return Response(audio_bytes, media_type="audio/mpeg")
+
+
+@app.post("/api/speak-stream")
+def speak_stream(req: SpeakRequest):
+    def _generate():
+        for chunk in text_to_speech_stream(
+            req.text,
+            agent_id=req.agent_id,
+            frustration_level=req.frustration_level,
+        ):
+            if isinstance(chunk, (bytes, bytearray)):
+                yield chunk
+
+    return StreamingResponse(
+        _generate(),
+        media_type="audio/mpeg",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @app.post("/api/call-end")
