@@ -197,7 +197,7 @@ def get_or_create_agent(agent_id: str, backend_url: str) -> str:
 def get_signed_url(el_agent_id: str) -> str:
     """Issue an ephemeral signed WebSocket URL for a private session."""
     r = requests.get(
-        f"{_BASE}/v1/convai/conversations/get_signed_url",
+        f"{_BASE}/v1/convai/conversation/get_signed_url",
         params={"agent_id": el_agent_id},
         headers=_h(),
         timeout=10,
