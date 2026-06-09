@@ -6,6 +6,7 @@ on:
     paths:
       - 'static/**'
       - 'vercel.json'
+  workflow_dispatch:
 
 jobs:
   deploy:
