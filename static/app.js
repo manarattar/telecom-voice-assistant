@@ -406,8 +406,6 @@ async function startSession() {
   _ws = new WebSocket(session.signed_url);
 
   _ws.onopen = () => {
-    // Override first_message per-session; pass customer info as dynamic_variable
-    // (system prompt uses {{customer_context}} placeholder).
     _ws.send(JSON.stringify({
       type: 'conversation_initiation_client_data',
       conversation_config_override: {
@@ -417,7 +415,8 @@ async function startSession() {
         customer_context: session.customer_context || '',
       },
     }));
-    _startCapture(_micStream);
+    // Do NOT start audio here — wait for conversation_initiation_metadata
+    // so the server has finished initializing the session before we send audio.
   };
 
   _ws.onmessage = _handleMsg;
@@ -472,6 +471,7 @@ function _handleMsg(evt) {
 
     case 'conversation_initiation_metadata':
       setMode('active');
+      _startCapture(_micStream);
       break;
 
     case 'user_transcript': {
