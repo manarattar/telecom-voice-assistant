@@ -1,23 +1,23 @@
-"""FastAPI backend — replaces the Streamlit app/main.py."""
+"""FastAPI backend — TelecomNL Voice AI Assistant."""
 
 import json
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, UploadFile
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response, StreamingResponse
-from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
-
+from app.agents import DEFAULT_AGENT_ID, get_agent
 from app.config import VOICE_ENABLED
 from app.conversation_manager import (ConversationState, build_greeting,
-                                      process_message_stream)
+                                      process_turn_with_tools)
 from app.escalation import escalate
 from app.intent_detector import analyze_intent
 from app.stt import speech_to_text
 from app.summary_generator import generate_summary
 from app.utils import load_customers
 from app.voice import text_to_speech
+from fastapi import FastAPI, File, Form, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, Response, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
 
 app = FastAPI(title="TelecomNL AI Support")
 
@@ -31,12 +31,13 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
-# ── Request models ────────────────────────────────────────────────────────────
+# ── Request / response models ─────────────────────────────────────────────────
 
 
 class GreetRequest(BaseModel):
     customer: dict = Field(default_factory=dict)
     language: str = "nl"
+    agent_id: str = DEFAULT_AGENT_ID
 
 
 class ChatRequest(BaseModel):
@@ -44,6 +45,7 @@ class ChatRequest(BaseModel):
     messages: list[dict] = Field(default_factory=list)
     customer: dict = Field(default_factory=dict)
     language: str = "nl"
+    agent_id: str = DEFAULT_AGENT_ID
     intent: str = "unknown"
     confidence: float = 0.0
     sentiment: str = "neutral"
@@ -57,15 +59,30 @@ class ChatRequest(BaseModel):
 
 class SpeakRequest(BaseModel):
     text: str
+    agent_id: str = DEFAULT_AGENT_ID
+    frustration_level: int = 1
+
+
+class CallEndRequest(BaseModel):
+    session_id: str = ""
+    agent_id: str = DEFAULT_AGENT_ID
+    customer_name: str = ""
+    intent: str = "unknown"
+    turns: int = 0
+    sentiment: str = "neutral"
+    escalated: bool = False
+    resolved: bool = False
+    rating: int = 0
 
 
 # ── State helpers ─────────────────────────────────────────────────────────────
 
 
 def _rebuild(req: ChatRequest) -> ConversationState:
-    s = ConversationState(
+    return ConversationState(
         customer=req.customer,
         language=req.language,
+        agent_id=req.agent_id,
         messages=list(req.messages),
         intent=req.intent,
         confidence=req.confidence,
@@ -77,13 +94,13 @@ def _rebuild(req: ChatRequest) -> ConversationState:
         troubleshooting_step=req.troubleshooting_step,
         summary=dict(req.summary),
     )
-    return s
 
 
 def _to_dict(state: ConversationState) -> dict:
     return {
         "customer": state.customer,
         "language": state.language,
+        "agentId": state.agent_id,
         "messages": state.messages,
         "intent": state.intent,
         "confidence": state.confidence,
@@ -111,15 +128,42 @@ def get_customers():
     return load_customers()
 
 
+@app.get("/api/agents")
+def get_agents():
+    from app.agents import AGENTS
+
+    return [
+        {
+            "id": a.id,
+            "name": a.name,
+            "emoji": a.emoji,
+            "color": a.color,
+            "language": a.default_language,
+        }
+        for a in AGENTS.values()
+    ]
+
+
 @app.post("/api/greet")
 def greet(req: GreetRequest):
-    state = ConversationState.new(customer=req.customer, language=req.language)
-    greeting = build_greeting(state)
+    state = ConversationState.new(
+        customer=req.customer,
+        language=req.language,
+        agent_id=req.agent_id,
+    )
+    greeting = build_greeting(state, agent_id=req.agent_id)
     state.messages.append({"role": "assistant", "content": greeting})
+    agent = get_agent(req.agent_id)
     return {
         "greeting": greeting,
         "state": _to_dict(state),
         "voiceEnabled": VOICE_ENABLED,
+        "agent": {
+            "id": agent.id,
+            "name": agent.name,
+            "emoji": agent.emoji,
+            "color": agent.color,
+        },
     }
 
 
@@ -135,7 +179,7 @@ async def transcribe(
 
 @app.post("/api/chat")
 def chat(req: ChatRequest):
-    """Server-Sent Events stream: text chunks then final state JSON."""
+    """SSE stream: tool_call / tool_done / chunk / done events."""
 
     def _generate():
         state = _rebuild(req)
@@ -143,7 +187,6 @@ def chat(req: ChatRequest):
         state.update_from_intent(result)
 
         if state.should_escalate() and not state.escalated:
-            # Add user message to history before escalating
             state.messages.append({"role": "user", "content": req.message})
             state.turn_count += 1
             state.troubleshooting_step += 1
@@ -152,10 +195,9 @@ def chat(req: ChatRequest):
             state.messages.append({"role": "assistant", "content": response})
             yield f"data: {json.dumps({'type': 'chunk', 'text': response})}\n\n"
         else:
-            for chunk in process_message_stream(state, req.message):
-                yield f"data: {json.dumps({'type': 'chunk', 'text': chunk})}\n\n"
+            for event in process_turn_with_tools(state, req.message, req.customer):
+                yield f"data: {json.dumps(event)}\n\n"
 
-        # Optional summary every 5 turns
         if state.escalated or (state.turn_count > 0 and state.turn_count % 5 == 0):
             try:
                 generate_summary(state)
@@ -173,15 +215,25 @@ def chat(req: ChatRequest):
 
 @app.post("/api/speak")
 def speak(req: SpeakRequest):
-    audio_bytes = text_to_speech(req.text)
+    audio_bytes = text_to_speech(
+        req.text,
+        agent_id=req.agent_id,
+        frustration_level=req.frustration_level,
+    )
     if not audio_bytes:
         return JSONResponse({"error": "TTS niet beschikbaar"}, status_code=503)
     return Response(audio_bytes, media_type="audio/mpeg")
 
 
+@app.post("/api/call-end")
+def call_end(req: CallEndRequest):
+    """Acknowledge call end — could persist to DB in future."""
+    return {"ok": True, "session": req.session_id}
+
+
 @app.get("/api/voice-check")
 def voice_check():
-    """Diagnostic endpoint — tests TTS with a short phrase."""
+    """Diagnostic: test TTS with a short phrase."""
     import traceback
 
     result = {"voice_enabled": VOICE_ENABLED, "ok": False, "error": None, "bytes": 0}

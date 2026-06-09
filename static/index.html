@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TelecomNL — AI Klantenservice</title>
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#08080f">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -24,15 +26,18 @@
       </div>
     </header>
 
+    <!-- Agent picker -->
+    <div class="agent-picker" id="agentPicker"></div>
+
     <!-- Agent card -->
     <div class="agent-card">
       <div class="avatar-wrap" id="avatarWrap">
         <div class="ring r1"></div>
         <div class="ring r2"></div>
         <div class="ring r3"></div>
-        <div class="avatar">🎧</div>
+        <div class="avatar" id="agentAvatar">🎧</div>
       </div>
-      <div class="agent-name">Sarah</div>
+      <div class="agent-name" id="agentName">Sarah</div>
       <div class="agent-status" id="agentStatus">
         <span class="status-dot"></span>
         <span id="statusText">Beschikbaar</span>
@@ -44,6 +49,19 @@
       <div class="transcript" id="transcript">
         <div class="transcript-empty" id="transcriptEmpty">
           Gesprek wordt geladen…
+        </div>
+      </div>
+    </div>
+
+    <!-- Sentiment chart (collapsible) -->
+    <div class="collapsible-section" id="chartSection">
+      <button class="section-header" id="chartToggle" aria-expanded="false">
+        <span>📈 Sentiment verloop</span>
+        <span class="chevron">▾</span>
+      </button>
+      <div class="section-body" id="chartBody" style="display:none">
+        <div class="chart-wrap">
+          <canvas id="sentimentChart"></canvas>
         </div>
       </div>
     </div>
@@ -74,12 +92,11 @@
     <!-- Mic area -->
     <div class="mic-area">
       <div class="waveform" id="waveform">
-        <span></span><span></span><span></span><span></span><span></span>
-        <span></span><span></span>
+        <span></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span>
       </div>
 
       <button class="mic-btn" id="micBtn" aria-label="Opnemen starten">
-        <!-- Idle / playing: mic icon -->
         <svg class="icon-mic" id="iconMic" viewBox="0 0 24 24" fill="none"
              stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
           <rect x="9" y="2" width="6" height="11" rx="3"/>
@@ -87,20 +104,80 @@
           <line x1="12" y1="19" x2="12" y2="23"/>
           <line x1="8" y1="23" x2="16" y2="23"/>
         </svg>
-        <!-- Recording: stop icon -->
         <svg class="icon-stop" id="iconStop" viewBox="0 0 24 24" fill="currentColor"
              style="display:none">
           <rect x="6" y="6" width="12" height="12" rx="2.5"/>
         </svg>
-        <!-- Processing: spinner -->
+        <!-- Interrupt icon (shown during TTS playback) -->
+        <svg class="icon-interrupt" id="iconInterrupt" viewBox="0 0 24 24"
+             fill="currentColor" style="display:none">
+          <rect x="6" y="4" width="4" height="16" rx="1.5"/>
+          <rect x="14" y="4" width="4" height="16" rx="1.5"/>
+        </svg>
         <div class="spin" id="spin" style="display:none"></div>
       </button>
 
       <div class="mic-label" id="micLabel">Klik om te spreken</div>
+
+      <div class="mic-options">
+        <button class="opt-btn" id="vadBtn" title="Handsfree modus">
+          🎙️ Auto
+        </button>
+        <button class="opt-btn" id="exportBtn" title="Gesprek exporteren">
+          ⬇️ Export
+        </button>
+      </div>
+    </div>
+
+    <!-- Call history (collapsible) -->
+    <div class="collapsible-section" id="historySection">
+      <button class="section-header" id="historyToggle" aria-expanded="false">
+        <span>📋 Gesprekgeschiedenis</span>
+        <span class="chevron">▾</span>
+      </button>
+      <div class="section-body" id="historyBody" style="display:none">
+        <div class="history-list" id="historyList">
+          <div class="history-empty">Nog geen gesprekken.</div>
+        </div>
+      </div>
     </div>
 
   </div><!-- /#app -->
 
+  <!-- Post-call survey modal -->
+  <div class="modal-overlay" id="surveyModal" style="display:none" role="dialog"
+       aria-modal="true" aria-label="Gespreksbeoordeling">
+    <div class="modal">
+      <h3 class="modal-title">Hoe was dit gesprek?</h3>
+      <div class="stars" id="surveyStars" role="group" aria-label="Beoordeling">
+        <button class="star" data-val="1" aria-label="1 ster">★</button>
+        <button class="star" data-val="2" aria-label="2 sterren">★</button>
+        <button class="star" data-val="3" aria-label="3 sterren">★</button>
+        <button class="star" data-val="4" aria-label="4 sterren">★</button>
+        <button class="star" data-val="5" aria-label="5 sterren">★</button>
+      </div>
+      <div class="survey-q">Was uw probleem opgelost?</div>
+      <div class="survey-resolve-btns">
+        <button class="survey-resolve yes" id="surveyYes">✓ Ja</button>
+        <button class="survey-resolve no"  id="surveyNo">✗ Nee</button>
+      </div>
+      <button class="survey-skip" id="surveySkip">Overslaan</button>
+    </div>
+  </div>
+
+  <!-- Chart.js (CDN, graceful fallback if offline) -->
+  <script>
+    window._chartJsLoaded = false;
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"
+          onload="window._chartJsLoaded=true" onerror="console.warn('Chart.js unavailable')">
+  </script>
   <script src="/static/app.js"></script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/static/sw.js').catch(() => {});
+    }
+  </script>
 </body>
 </html>
