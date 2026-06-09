@@ -41,82 +41,48 @@ def _save_cache(data: dict) -> None:
 
 def _tool_defs(backend_url: str) -> list[dict]:
     base = backend_url.rstrip("/") + "/api/tools"
+
+    def _webhook(name: str, description: str) -> dict:
+        return {
+            "type": "webhook",
+            "name": name,
+            "description": description,
+            "api_schema": {
+                "url": f"{base}/{name}",
+                "method": "POST",
+                "request_body_schema": {
+                    "type": "object",
+                    "properties": {
+                        "account_id": {
+                            "type": "string",
+                            "description": "Customer account number",
+                        }
+                    },
+                    "required": ["account_id"],
+                },
+            },
+        }
+
     return [
-        {
-            "type": "webhook",
-            "name": "check_line_quality",
-            "description": (
-                "Check real-time line quality and diagnostics for a customer. "
-                "Use for slow internet, disconnections, or unstable connection."
-            ),
-            "api": {"url": f"{base}/check_line_quality", "method": "POST"},
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "account_id": {
-                        "type": "string",
-                        "description": "Customer account number",
-                    }
-                },
-                "required": ["account_id"],
-            },
-        },
-        {
-            "type": "webhook",
-            "name": "restart_modem",
-            "description": (
-                "Remotely restart the customer's modem/router. "
-                "Use after basic troubleshooting fails."
-            ),
-            "api": {"url": f"{base}/restart_modem", "method": "POST"},
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "account_id": {
-                        "type": "string",
-                        "description": "Customer account number",
-                    }
-                },
-                "required": ["account_id"],
-            },
-        },
-        {
-            "type": "webhook",
-            "name": "check_area_outage",
-            "description": (
-                "Check for known outages in the customer's area. "
-                "Use when customer reports complete internet outage."
-            ),
-            "api": {"url": f"{base}/check_area_outage", "method": "POST"},
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "account_id": {
-                        "type": "string",
-                        "description": "Customer account number",
-                    }
-                },
-                "required": ["account_id"],
-            },
-        },
-        {
-            "type": "webhook",
-            "name": "lookup_account",
-            "description": (
-                "Look up account details, subscription plan, billing, and open tickets."
-            ),
-            "api": {"url": f"{base}/lookup_account", "method": "POST"},
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "account_id": {
-                        "type": "string",
-                        "description": "Customer account number",
-                    }
-                },
-                "required": ["account_id"],
-            },
-        },
+        _webhook(
+            "check_line_quality",
+            "Check real-time line quality and diagnostics for a customer. "
+            "Use for slow internet, disconnections, or unstable connection.",
+        ),
+        _webhook(
+            "restart_modem",
+            "Remotely restart the customer's modem/router. "
+            "Use after basic troubleshooting fails.",
+        ),
+        _webhook(
+            "check_area_outage",
+            "Check for known outages in the customer's area. "
+            "Use when customer reports complete internet outage.",
+        ),
+        _webhook(
+            "lookup_account",
+            "Look up account details, subscription plan, billing, and open tickets.",
+        ),
     ]
 
 
@@ -176,7 +142,11 @@ def _create_agent(agent_id: str, backend_url: str) -> str:
                 "language": agent.default_language,
             },
             "tts": {
-                "model_id": "eleven_multilingual_v2",
+                "model_id": (
+                    "eleven_multilingual_v2"
+                    if agent.default_language == "en"
+                    else "eleven_turbo_v2_5"
+                ),
                 "voice_id": agent.elevenlabs_voice_id,
                 "stability": 0.50,
                 "similarity_boost": 0.75,
