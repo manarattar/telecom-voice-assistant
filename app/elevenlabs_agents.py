@@ -104,7 +104,7 @@ def _system_prompt(agent) -> str:
             "5. Address the customer by name when you know it.\n"
             "6. Keep responses to 1-2 sentences — this is a VOICE conversation.\n"
             "7. Use diagnostic tools proactively for technical issues.\n"
-            "CUSTOMER INFO: injected at conversation start via system context."
+            "CUSTOMER INFO: {{customer_context}}"
         )
     return (
         f"Je bent {agent.name}, een klantenservicemedewerker van {COMPANY_NAME}.\n"
@@ -119,7 +119,7 @@ def _system_prompt(agent) -> str:
         "5. Spreek de klant bij naam aan als je die kent.\n"
         "6. Houd antwoorden op 1-2 zinnen — dit is een GESPROKEN conversatie.\n"
         "7. Gebruik diagnostische tools proactief bij technische problemen.\n"
-        "KLANTINFO: wordt aan het begin van elk gesprek via systeemcontext meegegeven."
+        "KLANTINFO: {{customer_context}}"
     )
 
 

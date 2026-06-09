@@ -406,14 +406,15 @@ async function startSession() {
   _ws = new WebSocket(session.signed_url);
 
   _ws.onopen = () => {
-    // Send per-session override: full system prompt with customer context + greeting
+    // Override first_message per-session; pass customer info as dynamic_variable
+    // (system prompt uses {{customer_context}} placeholder).
     _ws.send(JSON.stringify({
       type: 'conversation_initiation_client_data',
       conversation_config_override: {
-        agent: {
-          prompt: { prompt: session.full_prompt },
-          first_message: session.first_message,
-        },
+        agent: { first_message: session.first_message },
+      },
+      dynamic_variables: {
+        customer_context: session.customer_context || '',
       },
     }));
     _startCapture(_micStream);
@@ -421,13 +422,14 @@ async function startSession() {
 
   _ws.onmessage = _handleMsg;
 
-  _ws.onclose = () => {
+  _ws.onclose = e => {
+    console.warn('[ConvAI] closed', e.code, e.reason);
     _cleanup();
     setMode('idle');
   };
 
   _ws.onerror = err => {
-    console.error('[ConvAI]', err);
+    console.error('[ConvAI] error', err);
     _cleanup();
     setMode('idle');
   };

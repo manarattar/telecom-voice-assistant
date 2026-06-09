@@ -13,8 +13,7 @@ from app.agents import DEFAULT_AGENT_ID, get_agent
 from app.config import BACKEND_URL, COMPANY_NAME, VOICE_ENABLED
 from app.conversation_manager import (ConversationState, build_greeting,
                                       process_turn_with_tools)
-from app.elevenlabs_agents import (build_agent_prompt, get_or_create_agent,
-                                   get_signed_url)
+from app.elevenlabs_agents import get_or_create_agent, get_signed_url
 from app.escalation import escalate
 from app.intent_detector import analyze_intent
 from app.stt import speech_to_text
@@ -319,7 +318,7 @@ def realtime_session(req: RealtimeSessionRequest):
     return {
         "signed_url": signed_url,
         "first_message": first_message,
-        "full_prompt": build_agent_prompt(agent, customer_ctx),
+        "customer_context": customer_ctx,
         "agent": {
             "id": agent.id,
             "name": agent.name,
