@@ -1,0 +1,111 @@
+name: Deploy to Vercel (voice.manarattar.com)
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'static/**'
+      - 'vercel.json'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy static files to Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          python3 - <<'PYEOF'
+          import hashlib, os, json, sys
+          import urllib.request, urllib.error
+
+          TOKEN = os.environ["VERCEL_TOKEN"]
+          PROJECT_ID = "prj_A2u86CkNHQGxuiqp8fStR0MfGB4J"
+          TEAM_ID    = "team_RaxmlUUDNU6uEmlcUN9kOnnF"
+
+          def sha1(data): return hashlib.sha1(data).hexdigest()
+
+          def upload(deploy_path, data):
+              req = urllib.request.Request(
+                  f"https://api.vercel.com/v2/files?teamId={TEAM_ID}",
+                  data=data,
+                  headers={
+                      "Authorization": f"Bearer {TOKEN}",
+                      "Content-Type": "application/octet-stream",
+                      "x-vercel-digest": sha1(data),
+                      "Content-Length": str(len(data)),
+                  },
+                  method="POST",
+              )
+              try:
+                  with urllib.request.urlopen(req): pass
+              except urllib.error.HTTPError as e:
+                  body = json.loads(e.read().decode())
+                  if body.get("error", {}).get("code") != "file_already_exists":
+                      print(f"UPLOAD FAIL {deploy_path}: {body}", file=sys.stderr)
+                      sys.exit(1)
+
+          files = []
+
+          with open("vercel.json", "rb") as f:
+              data = f.read()
+          files.append({"file": "vercel.json", "sha": sha1(data), "size": len(data), "_data": data})
+
+          for fn in os.listdir("static"):
+              path = os.path.join("static", fn)
+              if not os.path.isfile(path): continue
+              with open(path, "rb") as f:
+                  data = f.read()
+              files.append({"file": f"static/{fn}", "sha": sha1(data), "size": len(data), "_data": data})
+
+          print(f"Uploading {len(files)} files...")
+          for f in files:
+              upload(f["file"], f["_data"])
+              print(f"  {f['file']} ({f['size']} bytes)")
+
+          payload = {
+              "name": "telecom-voice-assistant",
+              "files": [{"file": f["file"], "sha": f["sha"], "size": f["size"]} for f in files],
+              "projectSettings": {
+                  "outputDirectory": "static",
+                  "installCommand": "",
+                  "buildCommand": "",
+                  "framework": None,
+              },
+              "target": "production",
+          }
+          req = urllib.request.Request(
+              f"https://api.vercel.com/v13/deployments?teamId={TEAM_ID}&projectId={PROJECT_ID}",
+              data=json.dumps(payload).encode(),
+              headers={"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"},
+              method="POST",
+          )
+          try:
+              with urllib.request.urlopen(req) as r:
+                  resp = json.loads(r.read().decode())
+                  deploy_id = resp["id"]
+                  print(f"Deployment created: {resp['url']} (id={deploy_id})")
+          except urllib.error.HTTPError as e:
+              print("DEPLOY ERROR:", e.read().decode(), file=sys.stderr)
+              sys.exit(1)
+
+          # Poll until ready
+          import time
+          for _ in range(24):
+              time.sleep(5)
+              req = urllib.request.Request(
+                  f"https://api.vercel.com/v13/deployments/{deploy_id}?teamId={TEAM_ID}",
+                  headers={"Authorization": f"Bearer {TOKEN}"},
+              )
+              with urllib.request.urlopen(req) as r:
+                  state = json.loads(r.read().decode()).get("readyState", "?")
+              print(f"  state: {state}")
+              if state == "READY":
+                  print("Deployment live at https://voice.manarattar.com")
+                  break
+              if state in ("ERROR", "CANCELED"):
+                  print(f"Deployment failed: {state}", file=sys.stderr)
+                  sys.exit(1)
+          PYEOF
