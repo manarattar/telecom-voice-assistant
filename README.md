@@ -1,6 +1,6 @@
-# 📡 TelecomAI — Voice AI Customer Service Assistant
+# TelecomAI — Voice AI Customer Service Assistant
 
-> A production-grade voice AI prototype that simulates a telecom customer service agent — combining GPT-4o, ElevenLabs realistic voice synthesis, and OpenAI Whisper speech recognition into a fully interactive Streamlit demo.
+> A production-grade voice AI prototype that simulates a telecom customer service agent — combining GPT-4o, ElevenLabs realistic voice synthesis, and OpenAI Whisper speech recognition into a fully interactive browser voice demo.
 
 ---
 
@@ -58,7 +58,7 @@ User Input (voice or text)
   Text-to-Speech          ← ElevenLabs eleven_multilingual_v2
        │
        ▼
-  Streamlit UI            (chat + live dashboard)
+  Browser UI (static/)    (voice + live dashboard)
 ```
 
 ---
@@ -108,10 +108,27 @@ OPENAI_MODEL=gpt-4o
 ```bash
 python run.py
 # or directly:
-streamlit run app/main.py
+uvicorn server:app --reload
 ```
 
-Open [http://localhost:8501](http://localhost:8501) in your browser.
+Open [http://localhost:8000](http://localhost:8000) in your browser.
+
+This is the deployed app: a FastAPI backend (`server.py`) serving the voice
+frontend in `static/`. Live at [voice.manarattar.com](https://voice.manarattar.com),
+with the API on Render.
+
+<details>
+<summary>Legacy Streamlit UI</summary>
+
+An earlier text-chat UI still exists in `app/main.py`. It is not deployed and
+is not covered by `requirements.txt`:
+
+```bash
+pip install streamlit
+streamlit run app/main.py   # http://localhost:8501
+```
+
+</details>
 
 ---
 
@@ -121,13 +138,13 @@ Open [http://localhost:8501](http://localhost:8501) in your browser.
 Type your message in the chat input at the bottom of the screen.
 
 ### Voice mode
-Click **"🎤 Spreek uw vraag in"** to record. The audio is transcribed via Whisper and processed automatically. Requires Streamlit ≥ 1.38.
+Click the microphone to talk to the agent. Speech runs over a live ElevenLabs Conversational AI WebSocket session; the browser will ask for microphone permission.
 
 ### Customer selection
 Pick a customer from the sidebar to load their profile (plan, history, balance). The agent will address them by name and personalize responses.
 
 ### Language switching
-Toggle between Dutch 🇳🇱 and English 🇬🇧 in the sidebar. The agent auto-detects the customer's language from their messages.
+Toggle between Dutch and English with the NL/EN control in the header. The agent auto-detects the customer's language from their messages.
 
 ### Dashboard
 The right panel updates live with:
@@ -161,7 +178,7 @@ The right panel updates live with:
 ```
 telecom-voice-assistant/
 ├── app/
-│   ├── main.py                  # Streamlit UI
+│   ├── main.py                  # Legacy Streamlit UI (not deployed)
 │   ├── config.py                # Settings + API keys
 │   ├── llm.py                   # OpenAI GPT-4o integration
 │   ├── voice.py                 # ElevenLabs TTS
@@ -216,7 +233,7 @@ telecom-voice-assistant/
 | LLM | OpenAI GPT-4o |
 | Speech-to-text | OpenAI Whisper |
 | Text-to-speech | ElevenLabs eleven_multilingual_v2 |
-| UI | Streamlit |
+| UI | Vanilla JS + HTML/CSS (`static/`) |
 | Language | Python 3.10+ |
 | Storage | Local JSON |
 

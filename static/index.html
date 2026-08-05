@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TelecomNL — AI Klantenservice</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📡</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='24' r='3' fill='%2310b981'/><path d='M9.5 18.5a9 9 0 0 1 13 0' fill='none' stroke='%2310b981' stroke-width='2.75' stroke-linecap='round'/><path d='M4.5 12.5a17 17 0 0 1 23 0' fill='none' stroke='%2310b981' stroke-width='2.75' stroke-linecap='round'/></svg>">
   <link rel="manifest" href="/static/manifest.json">
   <meta name="theme-color" content="#08080f">
   <link rel="stylesheet" href="/static/style.css">
@@ -12,17 +12,17 @@
 <body>
 
   <div class="disclaimer">
-    ⚠️ Demo prototype — Geen echte TelecomNL klantenservice
+    Demo prototype — Geen echte TelecomNL klantenservice
   </div>
 
   <div id="app">
 
     <!-- Header -->
     <header class="header">
-      <div class="brand">📡 TelecomNL</div>
+      <div class="brand"><svg class="mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><circle cx="16" cy="24" r="3" fill="currentColor"/><path d="M9.5 18.5a9 9 0 0 1 13 0" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round"/><path d="M4.5 12.5a17 17 0 0 1 23 0" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round"/></svg><span>TelecomNL</span></div>
       <div class="header-right">
         <select id="customerSelect" class="select-pill" title="Klant selecteren"></select>
-        <button id="langToggle" class="btn-pill">🇳🇱 NL</button>
+        <button id="langToggle" class="btn-pill">NL</button>
         <button id="newCallBtn" class="btn-pill btn-icon" title="Nieuw gesprek">↺</button>
       </div>
     </header>
@@ -45,7 +45,7 @@
         <div class="ring r1"></div>
         <div class="ring r2"></div>
         <div class="ring r3"></div>
-        <div class="avatar" id="agentAvatar">🎧</div>
+        <div class="avatar" id="agentAvatar">S</div>
       </div>
       <div class="agent-name" id="agentName">Sarah</div>
       <div class="agent-status" id="agentStatus">
@@ -66,7 +66,7 @@
     <!-- Sentiment chart (collapsible) -->
     <div class="collapsible-section" id="chartSection">
       <button class="section-header" id="chartToggle" aria-expanded="false">
-        <span>📈 Sentiment verloop</span>
+        <span>Sentiment verloop</span>
         <span class="chevron">▾</span>
       </button>
       <div class="section-body" id="chartBody" style="display:none">
@@ -84,7 +84,7 @@
       </div>
       <div class="dash-chip">
         <span class="dash-label">Sentiment</span>
-        <span class="dash-val" id="dSentiment">😐</span>
+        <span class="dash-val" id="dSentiment">—</span>
       </div>
       <div class="dash-chip">
         <span class="dash-label">Vertrouwen</span>
@@ -95,7 +95,7 @@
         <span class="dash-val" id="dTurns">0</span>
       </div>
       <div class="dash-chip dash-esc" id="escChip" style="display:none">
-        <span class="dash-val">🚨 Escalatie</span>
+        <span class="dash-val">Escalatie</span>
       </div>
     </div>
 
@@ -141,10 +141,10 @@
 
       <div class="mic-options">
         <button class="opt-btn" id="vadBtn" title="Handsfree modus">
-          🎙️ Auto
+          Auto
         </button>
         <button class="opt-btn" id="exportBtn" title="Gesprek exporteren">
-          ⬇️ Export
+          Export
         </button>
       </div>
     </div>
@@ -152,7 +152,7 @@
     <!-- Call history (collapsible) -->
     <div class="collapsible-section" id="historySection">
       <button class="section-header" id="historyToggle" aria-expanded="false">
-        <span>📋 Gesprekgeschiedenis</span>
+        <span>Gesprekgeschiedenis</span>
         <span class="chevron">▾</span>
       </button>
       <div class="section-body" id="historyBody" style="display:none">

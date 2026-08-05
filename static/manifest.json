@@ -9,7 +9,7 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📡</text></svg>",
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='24' r='3' fill='%2310b981'/><path d='M9.5 18.5a9 9 0 0 1 13 0' fill='none' stroke='%2310b981' stroke-width='2.75' stroke-linecap='round'/><path d='M4.5 12.5a17 17 0 0 1 23 0' fill='none' stroke='%2310b981' stroke-width='2.75' stroke-linecap='round'/></svg>",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"

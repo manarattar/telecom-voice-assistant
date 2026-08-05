@@ -93,21 +93,31 @@ const T = {
 };
 function t(key) { return (T[state.language] || T.nl)[key] || key; }
 
+// ── Brand mark ────────────────────────────────────────────────────────────────
+// Signal-wave glyph, inherits colour from its container via currentColor.
+const BRAND_MARK =
+  '<svg class="mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">' +
+  '<circle cx="16" cy="24" r="3" fill="currentColor"/>' +
+  '<path d="M9.5 18.5a9 9 0 0 1 13 0" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round"/>' +
+  '<path d="M4.5 12.5a17 17 0 0 1 23 0" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round"/>' +
+  '</svg>';
+
 // ── Agent metadata ────────────────────────────────────────────────────────────
 const AGENT_META = {
-  sarah: { color: '#10b981', emoji: '🎧', name: 'Sarah' },
-  alex:  { color: '#6366f1', emoji: '🎯', name: 'Alex'  },
-  nina:  { color: '#f59e0b', emoji: '💼', name: 'Nina'  },
+  sarah: { color: '#10b981', initial: 'S', name: 'Sarah' },
+  alex:  { color: '#6366f1', initial: 'A', name: 'Alex'  },
+  nina:  { color: '#f59e0b', initial: 'N', name: 'Nina'  },
 };
 
 function applyAgentTheme(agentId) {
   const meta = AGENT_META[agentId] || AGENT_META.sarah;
   document.documentElement.style.setProperty('--agent-color', meta.color);
-  if (agentAvatar) agentAvatar.textContent = meta.emoji;
+  if (agentAvatar) agentAvatar.textContent = meta.initial;
   if (agentNameEl) agentNameEl.textContent  = meta.name;
+  // Each card keeps its own --agent-color, set when it was created, so the
+  // picker shows all three agent colours rather than the selected one.
   agentPicker.querySelectorAll('.agt-card').forEach(c => {
     c.classList.toggle('active', c.dataset.agent === agentId);
-    c.style.setProperty('--agent-color', meta.color);
   });
 }
 
@@ -194,16 +204,21 @@ function addBubble(role, text) {
 
 // ── Dashboard & chart ─────────────────────────────────────────────────────────
 const INTENT_LABELS = {
-  nl: { wifi_slow:'📶 Trage WiFi', wifi_down:'📶 WiFi storing', internet_down:'🚫 Geen internet',
-        internet_unstable:'⚡ Onstabiel', mobile_data:'📱 Mobiele data', sim_activation:'📲 SIM',
-        billing:'💶 Factuur', subscription_change:'📋 Abonnement', contract:'📄 Contract',
-        outage:'⚡ Storing', escalation:'🚨 Escalatie', unknown:'❓ —' },
-  en: { wifi_slow:'📶 Slow WiFi', wifi_down:'📶 WiFi down', internet_down:'🚫 No internet',
-        internet_unstable:'⚡ Unstable', mobile_data:'📱 Mobile data', sim_activation:'📲 SIM',
-        billing:'💶 Billing', subscription_change:'📋 Subscription', contract:'📄 Contract',
-        outage:'⚡ Outage', escalation:'🚨 Escalation', unknown:'❓ —' },
+  nl: { wifi_slow:'Trage WiFi', wifi_down:'WiFi storing', internet_down:'Geen internet',
+        internet_unstable:'Onstabiel', mobile_data:'Mobiele data', sim_activation:'SIM',
+        billing:'Factuur', subscription_change:'Abonnement', contract:'Contract',
+        outage:'Storing', escalation:'Escalatie', unknown:'—' },
+  en: { wifi_slow:'Slow WiFi', wifi_down:'WiFi down', internet_down:'No internet',
+        internet_unstable:'Unstable', mobile_data:'Mobile data', sim_activation:'SIM',
+        billing:'Billing', subscription_change:'Subscription', contract:'Contract',
+        outage:'Outage', escalation:'Escalation', unknown:'—' },
 };
-const SENT_MAP   = { positive:'😊', neutral:'😐', frustrated:'😤', angry:'😡', negative:'😟' };
+const SENT_LABELS = {
+  nl: { positive:'Positief', neutral:'Neutraal', frustrated:'Gefrustreerd',
+        angry:'Boos', negative:'Negatief' },
+  en: { positive:'Positive', neutral:'Neutral', frustrated:'Frustrated',
+        angry:'Angry', negative:'Negative' },
+};
 const SENT_SCORE = { positive:5, neutral:3, frustrated:2, angry:1, negative:1 };
 
 let sentimentChart = null;
@@ -246,7 +261,8 @@ function resetChart() {
 function updateDashboard() {
   const labels = INTENT_LABELS[state.language] || INTENT_LABELS.nl;
   $('dIntent').textContent    = labels[state.intent] || state.intent || '—';
-  $('dSentiment').textContent = (SENT_MAP[state.sentiment] || '😐') + ' ' + (state.sentiment || '');
+  const sentLabels = SENT_LABELS[state.language] || SENT_LABELS.nl;
+  $('dSentiment').textContent = sentLabels[state.sentiment] || '—';
   $('dConf').textContent      = state.confidence ? Math.round(state.confidence * 100) + '%' : '—';
   $('dTurns').textContent     = state.turnCount ?? 0;
   if (state.escalated || state.frustrationLevel >= 3) $('escChip').style.display = '';
@@ -400,7 +416,7 @@ async function startSession() {
   try {
     session = await API.realtimeSession(state.agentId, state.customer, state.language);
   } catch (e) {
-    addBubble('assistant', '⚠️ ' + t('sessionError'));
+    addBubble('assistant', t('sessionError'));
     setMode('idle');
     return;
   }
@@ -576,13 +592,13 @@ function renderHistory() {
     const time = new Date(h.ts).toLocaleString('nl-NL', { hour:'2-digit', minute:'2-digit', day:'numeric', month:'short' });
     const meta = AGENT_META[h.agentId] || AGENT_META.sarah;
     return `<div class="history-item">
-      <div class="history-emoji">${meta.emoji}</div>
+      <div class="history-monogram" style="color:${meta.color}">${meta.initial}</div>
       <div class="history-info">
         <div class="history-top"><span class="history-name">${h.customerName||'Onbekend'}</span><span class="history-time">${time}</span></div>
         <div class="history-sub">${meta.name} · ${h.turns} beurten · ${h.intent.replace(/_/g,' ')}</div>
         <div class="history-pills">
           ${h.resolved ? '<span class="history-pill resolved">✓ Opgelost</span>' : ''}
-          ${h.escalated ? '<span class="history-pill escalated">🚨 Escalatie</span>' : ''}
+          ${h.escalated ? '<span class="history-pill escalated">Escalatie</span>' : ''}
           ${h.rating ? '<span class="history-stars">' + '★'.repeat(h.rating) + '</span>' : ''}
         </div>
       </div></div>`;
@@ -672,7 +688,8 @@ function initCollapsible(toggleId, bodyId) {
 async function init() {
   const overlay = document.createElement('div');
   overlay.id = 'loadOverlay';
-  overlay.innerHTML = '<div class="load-logo">📡</div><div class="load-text">TelecomNL laden…</div>';
+  overlay.innerHTML = `<div class="load-logo">${BRAND_MARK}</div>
+    <div class="load-text">TelecomNL laden…</div>`;
   document.body.prepend(overlay);
 
   let customers, agentList;
@@ -707,13 +724,13 @@ async function init() {
     card.className = 'agt-card';
     card.dataset.agent = agent.id;
     card.style.setProperty('--agent-color', agent.color);
-    card.innerHTML = `<div class="agt-emoji">${agent.emoji}</div>
+    card.innerHTML = `<div class="agt-monogram">${(agent.name || '?').charAt(0).toUpperCase()}</div>
       <div class="agt-name">${agent.name}</div>
       <div class="agt-lang">${agent.language.toUpperCase()}</div>`;
     card.addEventListener('click', () => {
       state.agentId  = agent.id;
       state.language = agent.language === 'en' ? 'en' : state.language;
-      langToggle.textContent = state.language === 'en' ? '🇬🇧 EN' : '🇳🇱 NL';
+      langToggle.textContent = state.language === 'en' ? 'EN' : 'NL';
       applyAgentTheme(agent.id);
       // Restart active session with new agent
       if (_ws) { endSession(); setTimeout(startSession, 300); }
@@ -731,7 +748,7 @@ async function init() {
   // Language toggle
   langToggle.addEventListener('click', () => {
     state.language = state.language === 'nl' ? 'en' : 'nl';
-    langToggle.textContent = state.language === 'nl' ? '🇳🇱 NL' : '🇬🇧 EN';
+    langToggle.textContent = state.language === 'nl' ? 'NL' : 'EN';
     updateTrySaying();
     if (_ws) { endSession(); setTimeout(startSession, 300); }
   });

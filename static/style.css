@@ -77,7 +77,15 @@ body {
   background: rgba(8,8,15,0.85);
 }
 
-.brand { font-size: 17px; font-weight: 700; letter-spacing: -0.4px; }
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+}
+.brand .mark { width: 20px; height: 20px; color: var(--agent-color, var(--sarah)); flex-shrink: 0; }
 
 .header-right { display: flex; gap: 7px; align-items: center; }
 
@@ -137,7 +145,19 @@ body {
   box-shadow: 0 0 12px color-mix(in srgb, var(--agent-color, var(--sarah)) 20%, transparent);
 }
 
-.agt-emoji { font-size: 20px; line-height: 1; }
+.agt-monogram {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--agent-color, var(--sarah));
+  border: 1.5px solid currentColor;
+}
 .agt-name  { font-size: 12px; font-weight: 600; color: var(--text); }
 .agt-lang  { font-size: 10px; color: var(--text-dim); }
 
@@ -190,7 +210,10 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 34px;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--agent-color, var(--sarah));
   position: relative;
   z-index: 1;
   box-shadow: 0 0 28px color-mix(in srgb, var(--agent-color, var(--sarah)) 22%, transparent),
@@ -705,7 +728,19 @@ body {
 }
 .history-item:last-child { border-bottom: none; }
 
-.history-emoji { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+.history-monogram {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 1px;
+  border: 1.5px solid currentColor;
+}
 
 .history-info { flex: 1; min-width: 0; }
 .history-top {
@@ -836,7 +871,8 @@ body {
   transition: opacity 0.4s;
 }
 
-.load-logo { font-size: 40px; animation: spin 2s linear infinite; }
+.load-logo { color: var(--sarah); animation: spin 2s linear infinite; }
+.load-logo .mark { width: 40px; height: 40px; display: block; }
 .load-text  { font-size: 15px; color: var(--text-mid); }
 
 /* ── Keyboard hint ───────────────────────────────────────────────────────── */
