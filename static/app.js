@@ -115,6 +115,21 @@ function applyAgentTheme(agentId) {
 // States: idle | connecting | active | speaking
 let uiMode = 'idle';
 
+const TRY_SAYING = {
+  nl: ['"Mijn internet doet het niet"', '"Ik heb een vraag over mijn factuur"', '"Mijn wifi is erg langzaam"'],
+  en: ['"My internet is not working"', '"I have a question about my bill"', '"My wifi is very slow"'],
+};
+
+function updateTrySaying() {
+  const el = $('trySaying');
+  if (!el) return;
+  const chips = $('trySayingChips');
+  const label = $('trySayingLabel');
+  const phrases = TRY_SAYING[state.language] || TRY_SAYING.nl;
+  if (label) label.textContent = state.language === 'en' ? 'Try saying:' : 'Probeer te zeggen:';
+  if (chips) chips.innerHTML = phrases.map(p => `<span class="try-chip">${p}</span>`).join('');
+}
+
 function setMode(mode) {
   uiMode = mode;
 
@@ -133,6 +148,9 @@ function setMode(mode) {
 
   waveform.classList.toggle('active', mode === 'active');
   avatarWrap.className = 'avatar-wrap' + (mode === 'speaking' ? ' speaking' : '');
+
+  const trySaying = $('trySaying');
+  if (trySaying) trySaying.classList.toggle('hidden', mode !== 'idle');
 
   const color = mode === 'connecting' ? '#f59e0b' : 'var(--agent-color)';
   agentStatus.style.color       = color;
@@ -585,8 +603,13 @@ function showSurvey(callData) {
 function hideSurvey(rating, resolved) {
   surveyModal.style.display = 'none';
   if (_surveyPending) {
-    saveCall({ ..._surveyPending, rating: rating || 0, resolved: resolved ?? null });
+    const callData = { ..._surveyPending, rating: rating || 0, resolved: resolved ?? null };
+    saveCall(callData);
     renderHistory();
+    // Also log to dedicated feedback store for analytics
+    const log = JSON.parse(localStorage.getItem('voice_feedback') || '[]');
+    log.push({ rating: rating || 0, resolved, intent: _surveyPending.intent, turns: _surveyPending.turns, timestamp: new Date().toISOString() });
+    localStorage.setItem('voice_feedback', JSON.stringify(log));
     _surveyPending = null;
   }
 }
@@ -664,6 +687,20 @@ async function init() {
   customers.forEach(c => customerSelect.append(new Option(c.name, c.id)));
   state.customer = customers[0];
 
+  function updateCustomerCard(customer) {
+    const card = $('customerCard');
+    if (!card || !customer) return;
+    const lang = state.language;
+    $('customerCardLabel').textContent = lang === 'en' ? 'Scenario' : 'Klantscenario';
+    $('customerCardName').textContent = customer.name || '';
+    const plan = customer.plan_name || customer.plan || '';
+    const balance = customer.outstanding_balance != null ? `€${Number(customer.outstanding_balance).toFixed(2)} open` : '';
+    $('customerCardDetail').textContent = [plan, balance].filter(Boolean).join(' · ') || (lang === 'en' ? 'No plan info' : 'Geen planinfo');
+    card.style.display = 'flex';
+  }
+
+  updateCustomerCard(state.customer);
+
   // Agent picker
   agentList.forEach(agent => {
     const card = document.createElement('div');
@@ -687,6 +724,7 @@ async function init() {
   // Customer change
   customerSelect.addEventListener('change', () => {
     state.customer = customers.find(x => x.id === customerSelect.value) || state.customer;
+    updateCustomerCard(state.customer);
     if (_ws) { endSession(); setTimeout(startSession, 300); }
   });
 
@@ -694,6 +732,7 @@ async function init() {
   langToggle.addEventListener('click', () => {
     state.language = state.language === 'nl' ? 'en' : 'nl';
     langToggle.textContent = state.language === 'nl' ? '🇳🇱 NL' : '🇬🇧 EN';
+    updateTrySaying();
     if (_ws) { endSession(); setTimeout(startSession, 300); }
   });
 
@@ -715,6 +754,7 @@ async function init() {
   initCollapsible('chartToggle',   'chartBody');
   initCollapsible('historyToggle', 'historyBody');
   initSurveyEvents();
+  updateTrySaying();
 
   // Keyboard shortcuts
   document.addEventListener('keydown', e => {

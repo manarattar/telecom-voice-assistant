@@ -30,6 +30,15 @@
     <!-- Agent picker -->
     <div class="agent-picker" id="agentPicker"></div>
 
+    <!-- Customer context card -->
+    <div class="customer-card" id="customerCard" style="display:none">
+      <div class="customer-card-label" id="customerCardLabel">Klantscenario</div>
+      <div class="customer-card-body">
+        <span class="customer-card-name" id="customerCardName"></span>
+        <span class="customer-card-detail" id="customerCardDetail"></span>
+      </div>
+    </div>
+
     <!-- Agent card -->
     <div class="agent-card">
       <div class="avatar-wrap" id="avatarWrap">
@@ -119,6 +128,16 @@
       </button>
 
       <div class="mic-label" id="micLabel">Klik om te spreken</div>
+
+      <!-- Try saying panel — hidden once session starts -->
+      <div class="try-saying" id="trySaying">
+        <p class="try-saying-label" id="trySayingLabel">Probeer te zeggen:</p>
+        <div class="try-saying-chips" id="trySayingChips">
+          <span class="try-chip">"Mijn internet doet het niet"</span>
+          <span class="try-chip">"Ik heb een vraag over mijn factuur"</span>
+          <span class="try-chip">"Mijn wifi is erg langzaam"</span>
+        </div>
+      </div>
 
       <div class="mic-options">
         <button class="opt-btn" id="vadBtn" title="Handsfree modus">

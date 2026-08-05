@@ -580,6 +580,78 @@ body {
   text-align: center;
 }
 
+.customer-card {
+  margin: 0 auto 6px;
+  max-width: 340px;
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.customer-card-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: var(--text-dim, #555);
+  white-space: nowrap;
+}
+.customer-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.customer-card-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.customer-card-detail {
+  font-size: 11px;
+  color: var(--text-mid);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.try-saying {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  transition: opacity 0.3s;
+}
+.try-saying.hidden { display: none; }
+.try-saying-label {
+  font-size: 11px;
+  color: var(--text-dim, #555);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+.try-saying-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+.try-chip {
+  font-size: 12px;
+  color: var(--text-mid);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 4px 12px;
+  font-style: italic;
+}
+
 .mic-options {
   display: flex;
   gap: 8px;
