@@ -1,12 +1,10 @@
 'use strict';
 
 // ── Backend URL ───────────────────────────────────────────────────────────────
-const API_BASE = (() => {
-  const h = window.location.hostname;
-  if (h === 'localhost' || h === '127.0.0.1') return '';
-  if (h.includes('onrender.com')) return '';
-  return 'https://telecom-voice-assistant.onrender.com';
-})();
+// The FastAPI app serves this page itself, so the API is always same-origin.
+// (It previously hardcoded a Render URL for any host that wasn't onrender.com,
+// which broke every call once the app moved.)
+const API_BASE = '';
 
 // ── API client ────────────────────────────────────────────────────────────────
 const API = {
