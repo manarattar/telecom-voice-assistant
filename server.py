@@ -136,6 +136,11 @@ def index():
     return Response(Path("static/index.html").read_bytes(), media_type="text/html")
 
 
+@app.get("/og-image.png")
+def og_image():
+    return Response(Path("static/og-image.png").read_bytes(), media_type="image/png")
+
+
 @app.get("/api/customers")
 def get_customers():
     return load_customers()
