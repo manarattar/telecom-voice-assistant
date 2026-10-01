@@ -1,8 +1,11 @@
-const CACHE = 'tnl-v1';
+const CACHE = 'tnl-v2';
 const PRECACHE = [
   '/',
   '/static/style.css',
+  '/static/crash.js',
   '/static/app.js',
+  '/static/theme.js',
+  '/static/tour.js',
   '/static/manifest.json',
 ];
 
@@ -20,21 +23,21 @@ self.addEventListener('activate', e => {
   );
 });
 
+// Network first, so a new deploy is never hidden behind a stale cached page;
+// the cache is only the offline fallback.
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
-
-  // Never cache API calls
+  if (e.request.method !== 'GET') return;
   if (url.pathname.startsWith('/api/')) return;
+  if (url.origin !== location.origin) return;
 
   e.respondWith(
-    caches.match(e.request).then(cached => {
-      if (cached) return cached;
-      return fetch(e.request).then(res => {
-        if (!res || res.status !== 200 || res.type === 'opaque') return res;
+    fetch(e.request).then(res => {
+      if (res && res.status === 200 && res.type === 'basic') {
         const clone = res.clone();
         caches.open(CACHE).then(c => c.put(e.request, clone));
-        return res;
-      }).catch(() => cached);
-    })
+      }
+      return res;
+    }).catch(() => caches.match(e.request))
   );
 });

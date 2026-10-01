@@ -102,9 +102,9 @@ const BRAND_MARK =
 
 // ── Agent metadata ────────────────────────────────────────────────────────────
 const AGENT_META = {
-  sarah: { color: '#10b981', initial: 'S', name: 'Sarah' },
-  alex:  { color: '#6366f1', initial: 'A', name: 'Alex'  },
-  nina:  { color: '#f59e0b', initial: 'N', name: 'Nina'  },
+  sarah: { color: '#15803d', initial: 'S', name: 'Sarah' },
+  alex:  { color: '#4f46e5', initial: 'A', name: 'Alex'  },
+  nina:  { color: '#b45309', initial: 'N', name: 'Nina'  },
 };
 
 function applyAgentTheme(agentId) {
@@ -117,6 +117,7 @@ function applyAgentTheme(agentId) {
   agentPicker.querySelectorAll('.agt-card').forEach(c => {
     c.classList.toggle('active', c.dataset.agent === agentId);
   });
+  if (window.recolorChart) window.recolorChart();
 }
 
 // ── UI mode ───────────────────────────────────────────────────────────────────
@@ -138,8 +139,30 @@ function updateTrySaying() {
   if (chips) chips.innerHTML = phrases.map(p => `<span class="try-chip">${p}</span>`).join('');
 }
 
+// ── Call timer ────────────────────────────────────────────────────────────────
+let _timerStart = 0, _timerId = null;
+function fmtTimer(ms) {
+  const sec = Math.floor(ms / 1000);
+  return String(Math.floor(sec / 60)).padStart(2, '0') + ':' + String(sec % 60).padStart(2, '0');
+}
+function syncTimer(mode) {
+  const el = $('callTimer');
+  if (!el) return;
+  if (mode !== 'idle' && !_timerId) {
+    _timerStart = Date.now();
+    el.textContent = '00:00';
+    _timerId = setInterval(() => { el.textContent = fmtTimer(Date.now() - _timerStart); }, 500);
+  } else if (mode === 'idle' && _timerId) {
+    clearInterval(_timerId);
+    _timerId = null;
+  }
+  if (mode === 'idle' && !_timerId) el.classList.remove('live');
+  else el.classList.add('live');
+}
+
 function setMode(mode) {
   uiMode = mode;
+  syncTimer(mode);
 
   micBtn.className = 'mic-btn' + (mode !== 'idle' ? ' ' + mode : '');
   micBtn.disabled  = mode === 'connecting';
@@ -160,7 +183,7 @@ function setMode(mode) {
   const trySaying = $('trySaying');
   if (trySaying) trySaying.classList.toggle('hidden', mode !== 'idle');
 
-  const color = mode === 'connecting' ? '#f59e0b' : 'var(--agent-color)';
+  const color = mode === 'connecting' ? 'var(--warn)' : 'var(--agent-ink)';
   agentStatus.style.color       = color;
   agentStatus.style.background  = `color-mix(in srgb, ${color} 15%, transparent)`;
   agentStatus.style.borderColor = `color-mix(in srgb, ${color} 25%, transparent)`;
@@ -221,22 +244,38 @@ const SENT_SCORE = { positive:5, neutral:3, frustrated:2, angry:1, negative:1 };
 
 let sentimentChart = null;
 
+function chartInk() {
+  const cs = getComputedStyle(document.documentElement);
+  return { grid: cs.getPropertyValue('--rule').trim() || 'rgba(0,0,0,0.08)', tick: cs.getPropertyValue('--text-dim').trim() || '#66706a', line: AGENT_META[state.agentId]?.color || '#15803d' };
+}
+
+window.recolorChart = function () {
+  if (!sentimentChart) return;
+  const c = chartInk();
+  const ds = sentimentChart.data.datasets[0];
+  ds.borderColor = c.line; ds.pointBackgroundColor = c.line;
+  const o = sentimentChart.options.scales;
+  o.y.grid.color = c.grid; o.x.grid.color = c.grid; o.y.ticks.color = c.tick; o.x.ticks.color = c.tick;
+  sentimentChart.update('none');
+};
+
 function initChart() {
   if (!window._chartJsLoaded || sentimentChart) return;
   const ctx = $('sentimentChart').getContext('2d');
+  const ink = chartInk();
   sentimentChart = new Chart(ctx, {
     type: 'line',
     data: { labels: [], datasets: [{
-      data: [], borderColor: AGENT_META[state.agentId]?.color || '#10b981',
-      backgroundColor: 'rgba(16,185,129,0.08)', fill: true, tension: 0.4,
-      pointRadius: 4, pointBackgroundColor: AGENT_META[state.agentId]?.color || '#10b981',
+      data: [], borderColor: ink.line,
+      backgroundColor: 'rgba(21,128,61,0.08)', fill: true, tension: 0.4,
+      pointRadius: 4, pointBackgroundColor: ink.line,
     }] },
     options: {
       responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
       plugins: { legend: { display: false } },
       scales: {
-        y: { min:0, max:5, grid:{ color:'rgba(255,255,255,0.05)' }, ticks:{ color:'#5a6070', stepSize:1 } },
-        x: { grid:{ color:'rgba(255,255,255,0.05)' }, ticks:{ color:'#5a6070' } },
+        y: { min:0, max:5, grid:{ color: ink.grid }, ticks:{ color: ink.tick, stepSize:1 } },
+        x: { grid:{ color: ink.grid }, ticks:{ color: ink.tick } },
       },
     },
   });
@@ -381,7 +420,7 @@ function _startCapture(stream) {
   const draw = () => {
     _animFrame = requestAnimationFrame(draw);
     _analyser.getByteFrequencyData(data);
-    bars().forEach((b, i) => { b.style.height = Math.max(4, (data[i * 2] || 0) / 255 * 26) + 'px'; });
+    bars().forEach((b, i) => { b.style.height = Math.max(4, (data[i * 2] || 0) / 255 * 40) + 'px'; });
   };
   draw();
 }
@@ -721,7 +760,7 @@ async function init() {
     const card = document.createElement('div');
     card.className = 'agt-card';
     card.dataset.agent = agent.id;
-    card.style.setProperty('--agent-color', agent.color);
+    card.style.setProperty('--agent-color', (AGENT_META[agent.id] && AGENT_META[agent.id].color) || agent.color);
     card.innerHTML = `<div class="agt-monogram">${(agent.name || '?').charAt(0).toUpperCase()}</div>
       <div class="agt-name">${agent.name}</div>
       <div class="agt-lang">${agent.language.toUpperCase()}</div>`;
@@ -751,6 +790,19 @@ async function init() {
     if (_ws) { endSession(); setTimeout(startSession, 300); }
   });
 
+  // Header menu
+  const menuBtn = $('menuBtn'), menuPanel = $('menuPanel');
+  const closeMenu = () => { menuPanel.hidden = true; menuBtn.setAttribute('aria-expanded', 'false'); };
+  menuBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    const open = menuPanel.hidden;
+    menuPanel.hidden = !open;
+    menuBtn.setAttribute('aria-expanded', String(open));
+  });
+  document.addEventListener('click', e => { if (!menuPanel.hidden && !e.target.closest('.menu-wrap')) closeMenu(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !menuPanel.hidden) closeMenu(); });
+  $('newCallBtn').addEventListener('click', closeMenu);
+
   // New call button — end current session (survey fires inside endSession)
   $('newCallBtn').addEventListener('click', () => {
     if (_ws) endSession();
@@ -775,6 +827,7 @@ async function init() {
   document.addEventListener('keydown', e => {
     const tag = document.activeElement?.tagName;
     if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+    if (tag === 'BUTTON' && document.activeElement !== micBtn && e.code === 'Space') return;
     if (e.code === 'Space')  { e.preventDefault(); micBtn.click(); }
     if (e.code === 'Escape') { if (_ws) endSession(); }
   });

@@ -2,11 +2,16 @@
 <html lang="nl">
 <head>
   <meta charset="UTF-8">
+  <script>(function(){try{var t=localStorage.getItem('theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+  <script src="/static/crash.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TelecomNL — AI Klantenservice</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='24' r='3' fill='%2310b981'/><path d='M9.5 18.5a9 9 0 0 1 13 0' fill='none' stroke='%2310b981' stroke-width='2.75' stroke-linecap='round'/><path d='M4.5 12.5a17 17 0 0 1 23 0' fill='none' stroke='%2310b981' stroke-width='2.75' stroke-linecap='round'/></svg>">
   <link rel="manifest" href="/static/manifest.json">
-  <meta name="theme-color" content="#08080f">
+  <meta name="theme-color" content="#f3f5f2">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css">
   <!-- manarattar-geo -->
   <meta name="description" content="Bilingual (Dutch and English) voice AI customer-service agent: speak your issue and hear a spoken reply, with a live dashboard showing intent, sentiment an">
@@ -61,14 +66,21 @@
     <header class="header">
       <div class="brand"><svg class="mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><circle cx="16" cy="24" r="3" fill="currentColor"/><path d="M9.5 18.5a9 9 0 0 1 13 0" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round"/><path d="M4.5 12.5a17 17 0 0 1 23 0" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round"/></svg><span>TelecomNL</span></div>
       <div class="header-right">
-        <select id="customerSelect" class="select-pill" title="Klant selecteren"></select>
-        <button id="langToggle" class="btn-pill">NL</button>
-        <button id="newCallBtn" class="btn-pill btn-icon" title="Nieuw gesprek">↺</button>
+        <div class="menu-wrap">
+          <button id="menuBtn" class="btn-pill menu-btn" aria-haspopup="true" aria-expanded="false" aria-controls="menuPanel">Menu <span class="chevron">▾</span></button>
+          <div id="menuPanel" class="menu-panel" hidden>
+            <label class="menu-field"><span>Klant</span><select id="customerSelect" class="select-pill" title="Klant selecteren"></select></label>
+            <button id="langToggle" class="menu-item" type="button">NL</button>
+            <button id="newCallBtn" class="menu-item" type="button" title="Nieuw gesprek">Nieuw gesprek</button>
+            <button id="tourBtn" class="menu-item" type="button">Hoe werkt het?</button>
+          </div>
+        </div>
+        <button id="themeToggle" class="btn-pill btn-icon" type="button" aria-label="Switch to dark mode"></button>
       </div>
     </header>
 
     <!-- Agent picker -->
-    <div class="agent-picker" id="agentPicker"></div>
+    <div class="agent-picker" id="agentPicker" data-tour="personas"></div>
 
     <!-- Customer context card -->
     <div class="customer-card" id="customerCard" style="display:none">
@@ -88,6 +100,7 @@
         <div class="avatar" id="agentAvatar">S</div>
       </div>
       <div class="agent-name" id="agentName">Sarah</div>
+      <div class="call-timer" id="callTimer" aria-label="Gespreksduur">00:00</div>
       <div class="agent-status" id="agentStatus">
         <span class="status-dot"></span>
         <span id="statusText">Beschikbaar</span>
@@ -95,7 +108,7 @@
     </div>
 
     <!-- Transcript -->
-    <div class="transcript-wrap">
+    <div class="transcript-wrap" data-tour="transcript">
       <div class="transcript" id="transcript">
         <div class="transcript-empty" id="transcriptEmpty">
           Gesprek wordt geladen…
@@ -117,7 +130,7 @@
     </div>
 
     <!-- Dashboard strip -->
-    <div class="dash-strip" id="dashStrip">
+    <div class="dash-strip" id="dashStrip" data-tour="insights">
       <div class="dash-chip">
         <span class="dash-label">Issue</span>
         <span class="dash-val" id="dIntent">—</span>
@@ -146,7 +159,7 @@
         <span></span><span></span><span></span>
       </div>
 
-      <button class="mic-btn" id="micBtn" aria-label="Opnemen starten">
+      <button class="mic-btn" id="micBtn" data-tour="call" aria-label="Opnemen starten">
         <svg class="icon-mic" id="iconMic" viewBox="0 0 24 24" fill="none"
              stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
           <rect x="9" y="2" width="6" height="11" rx="3"/>
@@ -167,7 +180,7 @@
         <div class="spin" id="spin" style="display:none"></div>
       </button>
 
-      <div class="mic-label" id="micLabel">Klik om te spreken</div>
+      <div class="mic-label" id="micLabel" data-tour="handsfree">Klik om te spreken</div>
 
       <!-- Try saying panel — hidden once session starts -->
       <div class="try-saying" id="trySaying">
@@ -228,10 +241,12 @@
   <script>window._chartJsLoaded = false;</script>
   <script src="/static/chart.umd.min.js" onload="window._chartJsLoaded=true" onerror="console.warn('Chart.js unavailable')"></script>
   <script src="/static/app.js"></script>
+  <script src="/static/theme.js"></script>
+  <script src="/static/tour.js"></script>
 
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/static/sw.js').catch(() => {});
+      navigator.serviceWorker.register('/static/sw.js?v=2').catch(() => {});
     }
   </script>
 </body>
